@@ -1,2 +1,40 @@
-.vercel
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+dist-ssr
+build
+.output
+.cache
+
+# Frameworks & tools
+.tanstack
+.nitro
+.wrangler
+.turbo
+.source
+.vite
+
+# Testing
+coverage
+
+# Environment
+.env
 .env*
+*.local
+
+# Logs
+*.log
+.pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Security
+*.pem
+
+# Vercel
+.vercel
