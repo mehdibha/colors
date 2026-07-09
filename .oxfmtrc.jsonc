@@ -1,0 +1,76 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": false,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "printWidth": 80,
+  "sortPackageJson": false,
+  "sortImports": {
+    "newlinesBetween": false,
+    "customGroups": [
+      {
+        "groupName": "react-libs",
+        "elementNamePattern": [
+          "react",
+          "react/**",
+          "react-dom",
+          "react-dom/**",
+        ],
+      },
+      {
+        "groupName": "tanstack-libs",
+        "elementNamePattern": ["@tanstack/**"],
+      },
+      {
+        "groupName": "internal-config",
+        "elementNamePattern": ["@/config", "@/config/**"],
+      },
+      {
+        "groupName": "internal-lib",
+        "elementNamePattern": ["@/lib", "@/lib/**"],
+      },
+      {
+        "groupName": "internal-hooks",
+        "elementNamePattern": ["@/hooks", "@/hooks/**"],
+      },
+      {
+        "groupName": "internal-components",
+        "elementNamePattern": ["@/components", "@/components/**"],
+      },
+    ],
+    "groups": [
+      ["side_effect", "side_effect_style"],
+      { "newlinesBetween": true },
+      "react-libs",
+      "tanstack-libs",
+      "builtin",
+      "external",
+      { "newlinesBetween": true },
+      "internal-config",
+      "internal-lib",
+      "internal-hooks",
+      "internal-components",
+      "internal",
+      { "newlinesBetween": true },
+      ["parent", "sibling", "index"],
+      "style",
+      "unknown",
+    ],
+  },
+  "sortTailwindcss": {
+    "stylesheet": "src/styles.css",
+    "attributes": ["classList"],
+    "functions": ["cn", "tv", "createStyles"],
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/.cache/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.nitro/**",
+    "**/.output/**",
+    "**/.tanstack/**",
+    "**/.source/**",
+    "src/routeTree.gen.ts",
+  ],
+}
