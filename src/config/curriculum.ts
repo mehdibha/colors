@@ -42,7 +42,7 @@ export const curriculum: Part[] = [
         slug: 'why-hsl-lies',
         number: 4,
         title: 'Why HSL lies',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'perceptual-color-spaces',
