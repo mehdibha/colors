@@ -1,0 +1,92 @@
+---
+title: 'Hue along the ramp'
+description: The last of a ramp's three curves is mostly not a curve at all. Constant hue is the win OKLCH already banked, and blue never needs more — but yellow's constant-hue darks read olive, and shipped systems bend them toward orange by tens of degrees. The whole feature is one small hue-shift term, sized per hue family.
+part: 2
+question: 'Your dark yellow reads olive — how many degrees toward orange buy the yellow back?'
+---
+
+import { BlueHoldsItsHue } from '@/components/playgrounds/blue-holds-its-hue'
+import { DarkYellowGoesOlive } from '@/components/playgrounds/dark-yellow-goes-olive'
+import { SameTurnDifferentName } from '@/components/playgrounds/same-turn-different-name'
+import { ShippedHueBends } from '@/components/playgrounds/shipped-hue-bends'
+import { HueShiftExplorer } from '@/components/playgrounds/hue-shift-explorer'
+
+Two of the three curves are drawn. Chapter 11 chose the lightness skeleton; chapter 12 drew chroma under the gamut's tent — and closed by pointing here, at the column both chapters kept frozen: Radix bends hue along the scale, and that bend is this chapter. The third curve is a different kind of decision than the first two. Lightness and chroma change hugely across a ramp because they have to. Hue mostly shouldn't change at all — and the chapter's real question is where "mostly" breaks.
+
+## The win you already banked
+
+Remember what holding hue constant used to cost. Chapter 5's whole argument for OKLCH was that its hue angle is fitted to measured constant-hue data — hold H and vary L, and the walk stays on course, the thing Lab famously couldn't do in blue. So a flat hue column isn't laziness; it's the space's headline feature, used as intended:
+
+<BlueHoldsItsHue />
+
+That's why the last two chapters could freeze hue without disaster, and it's the engine's correct default. Shipped systems agree where they can: Radix red keeps all twelve steps inside an 11° window, Radix green inside ~9° — hand-tuned wobble with no consistent direction, not a bend. For most of the wheel, the third curve is effectively a constant, and the cheapest curve is the right one.
+
+## Where flat fails: yellow
+
+Now run the identical treatment — same skeleton, same chroma policy — at hue 110, the hue of `#ffff00`:
+
+<DarkYellowGoesOlive />
+
+The hue column is flawless and the dark half is an army uniform. Nothing drifted, nothing clamped unexpectedly — this _is_ dark yellow, and dark yellow has its own name. Stripe hit exactly this wall building their palette tooling and said it plainly: "It turns out 'really dark yellow' isn't actually a thing." Yellow's identity lives at the top of the lightness range — chapter 6 measured its gamut cusp at L 0.968, nearly white — and when you walk its hue down in lightness you don't get a darker yellow, you cross into the category next door: olive, khaki, brown-green. (There's a lab-grade layer underneath — even measured constant hue isn't perceptually constant, since desaturating or dimming a light shifts its reported hue (the Abney and Bezold–Brücke effects), and OKLab's fit to constant-hue appearance data flattens much of that but not all — that's the one-sentence version of the appearance-model rabbit hole, and we're not going in.)
+
+The rescue direction is written in the names we have for dark warm colors. Gold, amber, bronze — these are dark _warm_ yellows, and they sit toward orange on the wheel, not toward green. Bend the dark steps from 110° toward 80° and they trade olive for gold: still unmistakably the yellow family, just grown up.
+
+## Equal turns, unequal names
+
+Why does yellow need this and blue doesn't? Not because the space treats them differently — measure it:
+
+<SameTurnDifferentName />
+
+Twenty degrees costs the same ΔEOK at both hues; OKLCH is keeping its uniformity promise to the letter. What changed is which side of a _name boundary_ the color landed on. "Blue" is a wide territory — you can wander ±20° and stay in it — while yellow is a sliver with green pressing on one side and orange on the other. Uniformity measures difference; it says nothing about identity, because color naming is a fact about people and language, outside any space's promises. That's the chapter's pivotal consequence: a hue policy can't be one global number, because the tolerance it manages is per-family.
+
+## What shipped ramps do
+
+So measure the systems that ship. Plot each family's hue as degrees away from its own solid step:
+
+<ShippedHueBends />
+
+Tailwind's yellow runs from 102.2° at yellow-50 to 53.8° at yellow-950 — a 48-degree sweep across one ramp, ending at what is numerically an _orange_ hue. Amber sweeps 50°, orange 37°. Then the rest of the palette: blue drifts +13° toward violet, green wobbles within ~7° (its two ends 3° apart), and Radix red keeps its whole scale inside ~11°. Radix's yellow shows the same move with a hand-tuned signature: the dull steps 6–8 bend steadily warmer, the vivid solids at 9–10 snap back toward pure yellow (100.9°, 97.4°) — the brand's hue where the brand shows — and the text steps drop to 76.8°, a 24-degree bend where olive would otherwise live. The bend follows the jobs, not a formula.
+
+Two regularities fall out of the plot. First, hue is nearly free at the near-white end: those steps carry C 0.003–0.026, so their hue is almost invisible, and systems spend it casually — Tailwind's orange tints sit 26° yellow-ward of their solid and read as peach, not as a mistake. Second, and more surprising: **the bends chase the tent.** Check the ceilings at the ramps' ends: at L 0.987, hue 102 affords 2.4× the chroma of hue 86 — Tailwind's yellow tints sit where vividness is available. At L 0.286, the shipped yellow-950 hue of 54° affords more chroma than 86° or 102° would. And Tailwind's blue-950 at hue 268 gets a ceiling of C 0.188 where a flat ramp at 255° — the hue its lightest steps hold — would afford only 0.093: the violet-ward drift doubles the dark steps' chroma budget. Hue bends toward the neighbor whose tent is taller at that lightness. At yellow, identity and chroma point the same way — warm — which is why every system agrees on the direction. The chroma dividend takes depth to collect, though: it pays on Tailwind-sized sweeps toward 54°, while a modest rescue bend still spends a little chroma — the explorer below prints the bill.
+
+## The hue-shift term
+
+Everything above compresses into one small term. The hue column becomes `h(step) = h_seed + bend × w(step)`, where `w` runs from 0 at the lightest step to 1 at the darkest — keyed to each step's L, so the bend lives where the darkness is, not spread evenly by index. The bend itself is degrees, signed for direction, and the measured sizes are modest: Radix's dark-end bends run 15–30°; Tailwind spreads 35–50° across the whole ramp at yellow, amber, and orange; everything else on the wheel takes ≤ ~13°, much of it optional.
+
+The industry has shipped this term at every level of ceremony. ColorBox — the tool Lyft built its color system with — is the term productized: every scale takes a `hue_start`, a `hue_end`, and a `hue_curve` easing between them (mind chapter 5's porting warning: ColorBox eases HSB hue, so its degrees don't transfer to OKLCH's wheel). Stripe's tooling is the hand-tuned version — per-step adjustment in Lab-based coordinates, preserving "as much of the intended hue and saturation" as contrast allows. And Material's HCT is the null term, shipped at Google scale: tonal palettes are "constant in hue and chroma" by construction — one less parameter to explain, and its dark yellows go wherever constancy takes them. Chapter 23 weighs that trade in full.
+
+## The explorer
+
+All of it under one slider. The skeleton is chapter 11's, chroma is capped by chapter 12's ceiling, and the bend is yours:
+
+<HueShiftExplorer />
+
+Worth doing, in order:
+
+- **Read the default.** Yellow seed, −30° of bend. The constant row's dark half is the olive strip from the top of the chapter; the bent row's dark half is gold. Per-step hue readouts show the darks leaving 110° for 80°.
+- **Drag the bend to 0 and back.** Only the dark half changes — the weight is keyed to L, so the light steps never notice. And read the summary line honestly: at −30° the rescue _costs_ a sliver of chroma — the tent isn't taller at 80° gold, only further toward orange. Identity is what this bend buys; for the chroma payoff, hit the Orange or Blue preset.
+- **Overshoot to −60°.** The darks pass gold and land in plain brown-orange — leaving the family through the other door. The bend is a rescue, not a slider to max out.
+- **Bend the wrong way.** +30° at yellow sends the darks toward avocado. Direction is not a taste decision; the name map and the tent both point warm.
+- **Try Blue, Green, Red.** Blue tolerates nearly anything — ±15° reads as the same blue, and +13° quietly buys dark-step chroma. Green and red want zero. Five presets, four different right answers: that's "per family."
+
+## The decision this unlocks
+
+dotUI's engine already has the term — and the audit writes the rewrite's spec. The default producer takes a `hueTorsion` option: degrees of drift toward the dark end, default 0, so what actually ships today is constant hue — olive darks included, for any yellow seed. The implementation has three problems the measurements above expose. It's keyed to the step fraction rather than L (equivalent only while the skeleton stays monotone and evenly deployed). It's one global number, when the right size is per-family — tens of degrees at yellow, ~10 at blue, zero at red and green. And its direction logic is a pair of hardcoded bands — warm hues 20–110 pull toward 50°, cool hues 200–290 toward 290° — which puts red inside the warm band and bends it toward orange, though Radix's red never commits to a direction — its darkest step turns away from orange — and gives everything outside the bands no bend at all, no matter what's asked.
+
+The rewrite this chapter specs: a per-family table of bend defaults, seeded from the measured systems — big and warm-ward across the yellow–orange arc, small and violet-ward at blue, zero at red and green — keyed to L, with a single user-facing axis that scales the family default rather than replacing it. It earns axis status by the builder's own test: two good design systems disagree (Radix bends its yellows; Material refuses on principle), so the choice belongs to the user, not the engine.
+
+With that, all three curves are drawn — a ramp is now a skeleton, a chroma arc under a tent, and a bend. What's still open: dropping an arbitrary brand seed onto those three curves is chapter 14's fight; the near-free hue of the lightest steps returns as tinted neutrals in chapter 15; and whether any of these bends survive the trip to a dark background is chapter 16's problem.
+
+## Check yourself
+
+1. A constant-hue OKLCH yellow ramp has perfect steering by chapter 5's standards, yet its dark steps read olive. What exactly went wrong — and why does bending the darks toward orange fix it while bending toward green makes it worse?
+2. Turning a blue solid and a yellow solid by the same 20° produces the same ΔEOK. What does that number measure, what doesn't it measure, and why does that force hue policy to be set per hue family instead of one global number?
+3. Name the two independent reasons dark yellows bend toward orange — one about naming, one about the gamut tent — and explain which direction a dark blue drifts and what it buys there.
+
+## Further reading
+
+- [Stripe — Designing accessible color systems](https://stripe.com/blog/accessible-color-systems) — the Lab-based tooling, per-step hand adjustment, and the "really dark yellow isn't actually a thing" wall, hit in production.
+- [lyft/coloralgorithm](https://github.com/lyft/coloralgorithm) — ColorBox's engine: `hue_start`, `hue_end`, and `hue_curve` easing per scale — the hue-shift term as a product (in HSB coordinates; port with care).
+- [material-color-utilities](https://github.com/material-foundation/material-color-utilities) — HCT's tonal palettes, "constant in hue and chroma": the zero-bend philosophy shipped at scale.
+- Björn Ottosson, [A perceptual color space for image processing](https://bottosson.github.io/posts/oklab/) — the hue fit (Ebner–Fairchild constant-hue data) that makes a flat hue column a defensible default in the first place.
+- [Tailwind CSS — Colors](https://tailwindcss.com/docs/colors) — read the sweeps straight off the reference table: yellow 102°→54°, blue 255°→268°.

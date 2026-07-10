@@ -103,7 +103,7 @@ export const curriculum: Part[] = [
         slug: 'hue-along-the-ramp',
         number: 13,
         title: 'Hue along the ramp',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'seed-to-scale',
