@@ -36,11 +36,11 @@ Blue is the headline, but the spec lists more: hues elsewhere are "not perfect,"
 
 ## OKLab: optimized to fix exactly that
 
-In December 2020, Björn Ottosson — a game-engine developer, not a committee — published "A perceptual color space for image processing." His diagnosis matched the spec's: existing spaces' "largest issue is their inability to predict hue. In particular blue hues are predicted badly."
+In December 2020, Björn Ottosson — a game developer, not a committee — published "A perceptual color space for image processing." His diagnosis of Lab (and its sibling Luv) matched the spec's: their "largest issue is their inability to predict hue. In particular blue hues are predicted badly."
 
-His fix was pragmatic. Take the skeleton of IPT — a 1998 space that models hue direction well: convert to the eye's three cone responses, apply a cube root, mix down to three axes. Then, instead of hand-deriving the two mixing matrices, _numerically optimize them against perceptual data_: lightness and chroma fitted to the predictions of CAM16 (the CIE's current heavyweight appearance model), hue fitted to the Ebner–Fairchild dataset of colors people judged to be the same hue. OKLab is not new physics or new experiments — it's a careful curve-fit that inherits the best measured behavior of the models before it, in a form cheap enough to run on every pixel.
+His fix was pragmatic. Take the skeleton of IPT — a 1998 space that models hue direction well: convert to the eye's three cone responses, apply a compressive nonlinearity, mix down to three axes. Then _numerically optimize the matrices and the exponent against perceptual data_ — lightness and chroma fitted to the predictions of CAM16 (the CIE's current heavyweight appearance model), hue fitted to the same measured constant-hue data IPT was built on. The exponent came out a whisker from 1/3, and OKLab locks it there: a cube root, like Lab's. OKLab is not new physics or new experiments — it's a careful curve-fit that inherits the best measured behavior of the models before it, in a form cheap enough to run on every pixel.
 
-Why not use CAM16 itself, if it has the best data? Because appearance models are built to _describe_ appearance, not to be worked in: CAM16 wants viewing conditions as input, behaves badly numerically, and compresses chroma so hard that blends desaturate midway. OKLab trades a sliver of fidelity for coordinates that are cheap, stable, and safe to do arithmetic in. The name is honest: not perfect — okay.
+Why not use CAM16 itself, if it has the best data? Because it's built to _describe_ appearance, not to be worked in — it wants viewing conditions as input and isn't safe to do arithmetic in. OKLab trades a sliver of fidelity for coordinates that are cheap, stable, and workable. The name is honest: not perfect — okay.
 
 The result graduated from blog post to standard: CSS Color 4 adopted it with the assessment that OKLab has "improved hue linearity, hue uniformity, and chroma uniformity compared to CIE LCH." Uniform enough, in fact, that its difference formula needs no patches: ΔEOK is plain straight-line distance, the thing Lab needed ΔE2000 to fake.
 
@@ -48,7 +48,7 @@ Three spaces now claim they can walk from a color to white in even steps: sRGB b
 
 <UniformityLineup />
 
-That lineup is worth slowing down for, because uniformity is really _two_ promises, and the instruments test them separately. The gray twins test **pacing** — are the steps evenly sized? The hue strip tests **steering** — does the walk stay on course? On red and green seeds, CIELAB passes both, and even raw sRGB is only mildly off — bunched dark steps, a few degrees of drift; chapter 3 told you why value-ladder math is _roughly_ perceptual. Give CIELAB a blue, though, and something stranger happens: its pacing stays metronome-perfect while its steering fails — perfectly even steps marching confidently into purple. Pacing and steering are separate promises, a gray-ramp test only checks the first, and OKLab is the only row that keeps both on every seed. Not magic — it's simply the only one of the three that was fitted to hue data.
+That lineup is worth slowing down for, because uniformity is really _two_ promises, and the instruments test them separately. The gray twins test **pacing** — are the steps evenly sized? The hue strip tests **steering** — does the walk stay on course? On red and green seeds, CIELAB passes both, and even raw sRGB is only mildly off — bunched dark steps, under ten degrees of drift; chapter 3 told you why value-ladder math is _roughly_ perceptual. Give CIELAB a blue, though, and something stranger happens: its pacing stays metronome-perfect while its steering fails — perfectly even steps marching confidently into purple. Pacing and steering are separate promises, a gray-ramp test only checks the first, and OKLab is the only row that keeps both on every seed. Not magic — it's simply the only one of the three that was fitted to hue data.
 
 ## OKLCH: the same space, with the knobs you wanted
 
@@ -57,7 +57,7 @@ OKLab's native axes are Lab-shaped: L plus two opponent coordinates, _a_ (green�
 <ThreeHonestKnobs />
 
 - **L predicts lightness across hues.** 0 is black, 1 is white, and two colors sharing an L look equally light whatever their hue — the guarantee chapter 4's strips showed HSL faking and OKLCH keeping. One scale note: OKLab's L is its own axis, not L\*/100 — chapter 3's halfway gray `rgb(119 119 119)` sits at L\* 50 but OKLab L 0.57.
-- **C is real vividness.** Zero is exactly gray, and equal C looks comparably vivid across hues — no more "100% saturated" pastels. It's an open-ended axis, not a percentage: visible colors run to about 0.5 by the spec's reckoning, and nothing in sRGB exceeds 0.32.
+- **C is real vividness.** Zero is exactly gray, and equal C looks comparably vivid across hues — no more "100% saturated" pastels. It's an open-ended axis, not a percentage: visible colors run to about 0.5 by the spec's reckoning, and sRGB tops out around 0.32, at magenta.
 - **H moves hue and nothing else.** Turn it and lightness and vividness hold still — the exact torture test HSL failed in chapter 4.
 
 The knobs are independent because the space is uniform: each axis moves one perceptual quantity. That's the entire reason a color engine can exist — "20% lighter," "same vividness, different hue," "half the chroma" become single-axis arithmetic that lands where perception expects.
@@ -68,11 +68,11 @@ One porting warning before you start turning them. OKLCH's hue wheel is not HSL'
 
 ## What OKLab doesn't promise
 
-Honest tools admit their calibration range. OKLab is a perceptual color space, not a **color appearance model**: it maps coordinates to colors under one implied viewing situation — D65 white, well-lit screen, and (per the CSS spec) an eye "adapted to the color being defined." It has no inputs for surround, ambient light, or state of adaptation, where models like CAM16 do. Chapter 1's lesson therefore survives every space in this course:
+Honest tools admit their calibration range. OKLab is a perceptual color space, not a **color appearance model**: it maps coordinates to colors under one implied viewing situation — D65 white, well-lit screen, and (per the CSS spec) "adaptation to the color being defined." It has no inputs for surround, ambient light, or state of adaptation, where models like CAM16 do. Chapter 1's lesson therefore survives every space in this course:
 
 <SameOklchTwoSurrounds />
 
-Two smaller soft spots, filed honestly. Very saturated colors can look brighter than a gray of the same measured luminance — the Helmholtz–Kohlrausch effect — and OKLab's L, like Lab's before it, largely doesn't model it, so neon-bright accents may read a touch lighter than their number claims. And the dark end runs loose: OKLab's L disagrees with L\* near black, enough that Ottosson later published a corrected lightness (L<sub>r</sub>) for his color pickers. For the engine this matters less than it sounds — chapter 11 draws lightness _curves_ rather than stepping L evenly, and the curve absorbs it — but it's a known soft spot, not a rounding error.
+Two smaller soft spots, filed honestly. Very saturated colors can look brighter than a gray of the same measured luminance — the Helmholtz–Kohlrausch effect — and OKLab's L, like Lab's before it, largely doesn't model it, so treat L as least trustworthy on vivid accents. And the dark end runs loose: OKLab's L disagrees with L\* near black, enough that Ottosson later published a corrected lightness (L<sub>r</sub>) for his color pickers. For the engine this matters less than it sounds — chapter 11 draws lightness _curves_ rather than stepping L evenly, and the curve absorbs it — but it's a known soft spot, not a rounding error.
 
 File all three caveats the same way: OKLCH tells you what a color _is_; it doesn't tell you what a color _does in context_. The first job belongs to the space. The second is yours, and it's most of Part 2.
 
@@ -88,7 +88,7 @@ Two doors this deliberately leaves closed: OKLCH will happily name colors your s
 
 1. "Perceptually uniform" in one sentence — and how did this chapter's opening demo show sRGB failing it with two pairs of identical numeric distance?
 2. In the blue lineup, CIELAB's steps were perfectly even and it still lost. Which of the two promises did it break, and what did OKLab's construction do differently to keep it?
-3. A teammate ports `hsl(240 100% 50%)` to `oklch(0.55 0.15 240)` and asks why their blue looks wrong. Another insists two maximum-chroma accents "must look equally bright" because both have L 0.65. What do you tell each of them?
+3. A teammate ports `hsl(240 100% 50%)` to `oklch(0.55 0.12 240)` and asks why their blue looks wrong. Another insists two maximum-chroma accents "must look equally bright" because both have L 0.65. What do you tell each of them?
 
 ## Further reading
 
@@ -96,4 +96,3 @@ Two doors this deliberately leaves closed: OKLCH will happily name colors your s
 - [CSS Color 4, §9 Device-independent colors](https://www.w3.org/TR/css-color-4/#lab-colors) — Lab and OKLab side by side, including the spec's own list of Lab's failures and the blue-purpling sentence quoted in this chapter; §20 defines ΔE2000 and ΔEOK.
 - Björn Ottosson, [Two new color spaces for color picking — Okhsv and Okhsl](https://bottosson.github.io/posts/colorpicker/) — the honest fine print on OKLab's L scale, including the L<sub>r</sub> remap.
 - Raph Levien, [An interactive review of Oklab](https://raphlinus.github.io/color/2021/01/18/oklab-critique.html) — an independent audit: hue-linearity plots of OKLab against IPT and CIELAB, and where its lightness could still improve.
-- Eric Portis, [Okay, Color Spaces](https://ericportis.com/posts/2024/okay-color-spaces/) — the road from CIE 1931 to OKLCH told long-form, good as a second pass.

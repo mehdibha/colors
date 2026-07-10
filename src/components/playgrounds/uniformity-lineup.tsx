@@ -128,7 +128,9 @@ export function UniformityLineup() {
             <button
               key={`${seedId}-${index}`}
               type="button"
-              onClick={() => !revealed && setPicked(index)}
+              aria-label={`Pick ramp ${'ABC'[index]}`}
+              disabled={revealed}
+              onClick={() => setPicked(index)}
               className={cn(
                 'flex flex-col gap-1.5 rounded-lg text-left focus-reset focus-visible:focus-ring',
                 revealed ? 'cursor-default' : 'cursor-pointer',
@@ -143,7 +145,7 @@ export function UniformityLineup() {
                 {revealed && (
                   <span className="font-mono text-[0.7rem] text-fg-muted tabular-nums">
                     L* steps {ramp.stepMin.toFixed(1)}–{ramp.stepMax.toFixed(1)}
-                    {' · '}hue drift {ramp.drift >= 0 ? '+' : ''}
+                    {' · '}hue drift {ramp.drift > 0 ? '+' : ''}
                     {ramp.drift}°{picked === index && ' · your pick'}
                   </span>
                 )}

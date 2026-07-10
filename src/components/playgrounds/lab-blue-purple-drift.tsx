@@ -62,12 +62,12 @@ export function LabBluePurpleDrift() {
   const [t, setT] = useState(START)
 
   const rows = [
-    { name: 'CIELAB', color: labAt(t / 100), pinned: LAB_HUE },
-    { name: 'OKLab', color: okAt(t / 100), pinned: OK_HUE },
+    { name: 'CIELAB', color: labAt(t / 100) },
+    { name: 'OKLab', color: okAt(t / 100) },
   ].map((row) => ({
     ...row,
     hex: formatHex(toRgb(row.color)),
-    seen: Math.round(toOklch(row.color).h ?? OK_HUE),
+    seen: Math.round(toOklch(row.color)?.h ?? OK_HUE),
   }))
 
   return (
