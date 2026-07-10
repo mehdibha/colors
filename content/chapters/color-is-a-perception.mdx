@@ -5,6 +5,7 @@ part: 1
 question: Is the same color the same color?
 ---
 
+import { SameAccentTwoSurfaces } from '@/components/playgrounds/same-accent-two-surfaces'
 import { SimultaneousContrast } from '@/components/playgrounds/simultaneous-contrast'
 
 You've hit this bug before. You pick a color, it looks great in the mockup, and then it lands in the real UI — on a card, next to a sidebar, in dark mode — and it looks _wrong_. Muddier, lighter, somehow a different color. You didn't change the value. Nothing in the code changed.
@@ -26,6 +27,9 @@ Drag the surrounds toward each other and watch the two swatches "become" the sam
 Every color in your system will be judged by users' eyes in context, never in isolation. That single fact drives more of color-system design than any formula:
 
 - **A palette on a white artboard tells you nothing about dark mode.** The same accent that hums quietly on white can glow radioactive on near-black — same number, different perception. This is why dark mode is a second design problem, not a value swap (chapter 16 is about exactly this).
+
+  <SameAccentTwoSurfaces />
+
 - **Tokens are promises about perception, not values.** When a system says `border-muted` should read as "barely there," the value that delivers that perception depends on the surface it sits on. Context-dependence is why semantic tokens exist at all.
 - **You cannot judge colors from a table of swatches.** Every tool in this course — and every good palette tool, period — shows colors _on surfaces, next to neighbors_, because that's the only preview that doesn't lie.
 

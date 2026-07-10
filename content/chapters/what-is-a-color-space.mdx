@@ -6,6 +6,7 @@ question: Different colors, or different names for one color?
 ---
 
 import { OneColorFourNames } from '@/components/playgrounds/one-color-four-names'
+import { SameNumbersDifferentRed } from '@/components/playgrounds/same-numbers-different-red'
 
 Ask a room of developers the difference between hex, RGB, and HSL and most will say something like "different color formats, HSL is the more designer-friendly one." That answer contains a misconception that quietly breaks people's mental model of everything that comes later — so let's kill it in chapter 2.
 
@@ -31,6 +32,8 @@ Three words that get blurred together, now unblurred:
 - A **color space** is a model _plus a precise physical meaning_: exactly which red, which white point, which brightness curve. sRGB is a color space: it pins down what `rgb(255 0 0)` means as actual light.
 
 Here's why the distinction stops being pedantic: **Display P3 uses the same model as sRGB — three channels, 0 to 1 — but points its coordinates at different physical colors.** `color(display-p3 1 0 0)` and `rgb(255 0 0)` are the _same numbers_ naming _visibly different reds_ (P3's is noticeably more intense). Same street address, different city. If you only remember one sentence from this chapter: **numbers mean nothing until a color space says what they mean.**
+
+<SameNumbersDifferentRed />
 
 That's also the answer to why your CSS now has `oklch()`, `color()`, and friends. They aren't redundant formats accumulating — they're different coordinate systems, each useful because it makes a different kind of statement easy: sRGB talks to screens, HSL talks to intuition (dishonestly — chapter 4), and OKLCH talks to perception. Choosing which space to _work_ in is one of the first real decisions of building a color system, and now you have the vocabulary for it.
 

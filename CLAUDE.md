@@ -21,7 +21,7 @@ Scope guards (the outline came from a multi-agent gap audit — it's settled; ad
 
 ## Content rules
 
-- **One chapter = one decision; one playground = one question** (the frontmatter `question` field — the playground must actually answer it).
+- **One chapter = one decision.** Show, don't describe: use as many interactives as the chapter needs, at two grades. The **flagship playground** (shared `Playground` frame) answers the frontmatter `question` — one per chapter. **Minimal demos** (`Demo` frame — static or one control, no chrome) sit next to any paragraph that describes something visual; if the reader has to imagine what a color looks like, that's a missing demo, not acceptable prose.
 - Chapter anatomy: frontmatter (`title`, `description`, `part`, `question`) → prose with playground(s) inline → `## Check yourself` (2–3 questions answerable without scrolling up) → `## Further reading` (primary sources).
 - **Verify every factual claim against primary sources while drafting** — Ottosson's OKLab posts, the CSS Color 4 spec, WCAG/APCA docs, the systems' own docs for case studies. Wrong prose on a learning site is worse than wrong code: nothing fails loudly.
 - Honesty bar: teach all three ramp-generation philosophies (lightness-anchored, contrast-anchored, hand-tuned reference) with trade-offs — never dismiss a technique without a playground demonstrating why. State standards status plainly (WCAG 2 is the normative standard; APCA is not yet one).
@@ -30,7 +30,7 @@ Scope guards (the outline came from a multi-agent gap audit — it's settled; ad
 ## Structure
 
 - `content/chapters/<slug>.mdx` — chapter content; components imported directly in MDX.
-- `src/components/playgrounds/` — one file per playground; shared frame in `src/components/playground.tsx` (eyebrow + question + optional reset). Color math via `culori`.
+- `src/components/playgrounds/` — one file per playground or demo; flagship frame in `src/components/playground.tsx` (eyebrow + question + optional reset), minimal-demo frame in `src/components/demo.tsx` (optional caption only). Color math via `culori`.
 - `src/ui/` — vendored dotUI kit (React Aria Components + tailwind-variants). Use it; don't add UI dependencies.
 - `src/routes/` — `index.tsx` (hero + curriculum), `$slug.tsx` (chapter page: gutter TOC, part/chapter eyebrow, pager). `src/routeTree.gen.ts` is generated; never edit.
 
