@@ -1,0 +1,101 @@
+---
+title: 'Neutrals and tinted grays'
+description: 'Count the pixels on any product screen and the accent barely registers — the UI is mostly made of its neutral ramp. Pure achromatic gray sits strangely next to a hued accent, and shipped systems fix it with a whisper of tint: the whole move lives below C 0.02, and past it the gray stops being gray.'
+part: 2
+question: "How much of your accent's hue can the grays carry before they stop being gray?"
+---
+
+import { PureVsTintedUI } from '@/components/playgrounds/pure-vs-tinted-ui'
+import { SlateWhisperArc } from '@/components/playgrounds/slate-whisper-arc'
+import { RadixGrayPairings } from '@/components/playgrounds/radix-gray-pairings'
+import { WarmVsCoolNeutrals } from '@/components/playgrounds/warm-vs-cool-neutrals'
+import { SameMeterEitherWay } from '@/components/playgrounds/same-meter-either-way'
+import { NeutralTintDial } from '@/components/playgrounds/neutral-tint-dial'
+
+Chapter 14 closed with a fork it refused to resolve: a seed at C 0.010 could be a muted accent or a brand's neutral, and the pipeline couldn't tell. This chapter is the neutral half of that fork — and it matters more than its name suggests. Look at any product screen and count what the accent actually paints: a button, a link, a badge. Everything else — the app background, the sidebar, the cards, the borders, the text you're reading — comes off the neutral ramp. The accent gets the attention; the neutrals are what the UI is made of. Chapters 10 through 14 built an accent pipeline. The ramp doing most of the work gets this chapter.
+
+## The gray that doesn't belong
+
+The obvious neutral is the mathematical one: C = 0 at every step, the achromatic spine of OKLCH. It's also the one almost nobody ships. Put it next to a hued accent and judge:
+
+<PureVsTintedUI />
+
+The pure-gray card isn't wrong — every contract from chapter 10 holds. It's _detached_: the button looks pasted onto a screen that has no opinion about it. The tinted card's grays lean a few thousandths of chroma toward the accent's hue, and the surfaces and the button read as one system. Refactoring UI's palette chapter teaches this as temperature — saturate grays blue-ward and they feel cool, yellow- or orange-ward and they feel warm, the way a "cool white" bulb differs from a "warm white" one. Same lightness, different allegiance.
+
+Be honest about the size of the effect, because it's the point. Swatch against swatch, you might need a second look. Across a whole screen, it's unmistakable — chapter 1's oldest lesson, that context and area change what you see, working in your favor for once.
+
+## A whisper, measured
+
+How much tint is a "whisper"? Measure a shipped one. Radix slate, light mode, chroma per step, straight off the published hexes:
+
+<SlateWhisperArc />
+
+C 0.001 at step 1, climbing through 0.011 at step 7 to a **peak of 0.0165 at step 9**, then easing back to 0.010 at step 12. That's a chroma arc — chapter 12's curve, at about a twelfth of an accent's scale (Radix blue peaks at 0.193). The hue column isn't flat either: slate drifts from 286° at the near-whites to 248° at step 12 — chapter 13's bend, also in miniature. A tinted gray isn't a different kind of object. It's a ramp built by the same three curves, with the chroma budget turned down to a whisper.
+
+One identity makes the whisper precise. At equal lightness, the ΔEOK between a tinted gray and pure gray _is_ the tint's chroma — Oklab distance collapses to C when L matches. So slate's step 9 sits ΔEOK 0.0165 from pure gray: _below_ the 0.02 threshold the CSS gamut-mapping spec treats as just noticeable. The strongest tint in Radix's grays is officially at the edge of visibility per swatch — and plainly visible as a surface. That's the whole design space: the move works precisely because it operates under the JND and lets area do the arguing.
+
+## The pairing move
+
+Radix ships this idea as a product decision: six gray scales, five of them tinted, each documented as "based on" a hue and paired with the accents that share its neighborhood:
+
+<RadixGrayPairings />
+
+The measurements confirm the naming. Slate — "based on a blue hue" — sits at h 277.7, within a degree of iris (278.3). Sage at 171.6 is within a degree of jade (170.7). Sand at 106.7 is six degrees off yellow. The gray is literally the accent's hue with the chroma turned down to a hundredth.
+
+Two honest wrinkles. First, the chart is looser than strict hue-matching: mauve sits at h 293 — purple territory — yet it's the recommended gray for tomato and red, thirty degrees the _other_ side of zero. The pairing logic works in temperature neighborhoods (everything warm-and-pink-adjacent gets the purple-tinted gray), not degree equality. Second, Radix keeps pure `gray` in the lineup and documents it plainly: it "will work well with any hue or palette." Pure gray isn't a mistake — it's the neutral that refuses to commit, and for a product with many accents or none, refusing is correct. Their docs add the caution for the other direction: colorful components "may clash with your saturated gray background color."
+
+## Warm or cool is the product's temperature
+
+Take the accent away entirely and the tint still speaks:
+
+<WarmVsCoolNeutrals />
+
+Same layout, same lightness ladder, nothing but the whisper changing — and the screen moves between paper and instrument panel. This is a product decision, not a color-science one, which is exactly why it has to surface as a _choice_ in an engine rather than a constant: two good design systems will pick differently on purpose.
+
+## The jobs don't move
+
+Everything chapter 10 said about steps-as-jobs applies to the neutral ramp unchanged — more than applies, since on a real page the neutral ramp _holds_ most of the jobs: app and subtle backgrounds, the component states, all three border steps, both text steps. The accent typically keeps solid, hovered-solid, and a link color. And because tinting changes hue and chroma at near-constant lightness, it's free at the contrast register:
+
+<SameMeterEitherWay />
+
+A tenth, at worst — and that on a 16:1 ratio. Both of chapter 8's meters are driven almost entirely by luminance, and the tint barely touches it — so a neutral ramp's text contracts, border visibility, and state spacing all survive any whisper you choose. Tint amount and temperature are aesthetic axes; the contracts live on the lightness skeleton, which tinting never touches.
+
+## Where gray ends
+
+So how far can the dial go? The chapter's question, and the honest answer is: there's no law, but there is a shipped consensus, and it has a gap in it. At step 9, Radix's five tinted grays sit between C 0.0102 (sand) and 0.0193 (mauve). Its most muted _accents_ — gold and bronze, the scales that flirt with graydom — sit at C 0.049 and 0.046 at step 9. Between roughly 0.02 and 0.045, Radix ships nothing at all: no scale lives there, because nothing that chromatic reads as a background-grade neutral and nothing that muted earns a place as an accent. That no-man's-land is where your threshold lives. Find yours:
+
+<NeutralTintDial />
+
+Worth doing, in order:
+
+- **Read the default.** Iris accent, tint hue 278, amount C 0.016 — Radix-slate territory. The per-step readout shows the arc: thousandths near white, the peak at step 9.
+- **Drag the amount to 0.** The pure-gray version from the top of the chapter, live. Flick between 0 and 0.016 a few times — the screen changes temperature; the contract readout doesn't move.
+- **Push past 0.03.** Somewhere out there the sidebar stops being a gray sidebar and becomes a lavender surface. Note where it happens _for you_ — then switch accents and notice the threshold isn't even the same at every hue. That's why this chapter won't hand you a number.
+- **Switch accents.** The tint hue follows the accent — jade grays for a jade product, warm grays for orange. This is the Radix pairing table as a dial instead of a menu.
+- **Now drag the hue away from the accent.** Warm sand-like grays under a blue accent, or cool grays under orange. Temperature and pairing are two different decisions wearing one slider.
+- **Crank the amount and watch for ✕ marks.** Near white the sRGB ceiling drops fast: at h 278, step 2 (L 0.983) affords only C 0.008, step 1 (L 0.991) just 0.004 — even neutrals live under chapter 12's tent. This is chapter 13's near-free light-end hue seen from the other side: hue costs nothing there precisely because the chroma is a whisper, and a whisper is all the tent affords.
+
+## Dark mode owes its own answer
+
+Everything here was light mode, and dark mode doesn't inherit it by inversion. Radix's dark grays are tinted too — slateDark's app background is `#111113`, oklch(0.179 0.004 286): a near-black carrying C 0.004 of the same blue-violet whisper, three times what the light-mode background holds. How much tint a near-black can carry, whether elevation levels get their own steps, and which of this chapter's decisions survive the flip are chapter 16's problems; this chapter only registers that they're real decisions, not defaults.
+
+## The decision this unlocks
+
+dotUI's engine already tints its neutrals — quietly. The theme layer derives the neutral palette from the primary seed unless you pass one explicitly, and the OKLCH producer's `neutral` flag caps the ramp's peak chroma at `min(seed C, 0.012)` — inside Radix's shipped band — shaped by the same mid-peaked envelope as accents, at the seed's hue. Even the page background is derived from the neutral seed at C ≤ 0.01. Judged against this chapter, the _default_ is defensible; what's missing is that none of it is a decision the user can see or make. The cap is a constant, not an axis — pure gray is reachable only by the trick of passing an achromatic seed. Temperature has no override short of swapping the whole neutral seed. And chapter 14's fork is still unpaid: a near-gray seed pasted as _primary_ gets inflated to a full accent by the 0.11 chroma floor, because nothing in the intake ever asks whether it was a neutral.
+
+The rewrite this chapter specs: keep auto-tint-from-the-accent as the default — the measured consensus endorses it — and expose two axes on top. **Tint amount**, from 0 (pure gray, a legitimate choice Radix itself ships) through the whisper band, with the UI making the over-tinted failure visible rather than clamping silently. **Tint hue**, defaulting to the accent's hue, overridable by a plain warm/cool choice — a hue, not a second seed. And at the front door, the classification rule chapter 14 ordered: seed chroma at or under the gray band (≲ 0.02) offers "use as neutral" instead of silently flooring it into an accent; inside the 0.02–0.045 no-man's-land, ask the user, because the shipped systems themselves refuse to occupy it.
+
+Left open, on purpose: the dark twin of every number in this chapter is chapter 16; naming the neutral slots so components can consume them (`bg`, `surface`, `border`, `fg-muted`) is chapter 17; and the alpha-based grays Radix ships alongside these are chapter 18's.
+
+## Check yourself
+
+1. A teammate builds the neutral ramp at C 0 exactly, arguing "gray is gray." What do shipped systems do instead — roughly what chroma range, tinted toward what — and what breaks visually if you push that same dial to C 0.05?
+2. Tinting a neutral ramp changes each step's hue and chroma but leaves its lightness alone. Why do the text-contrast contracts barely move, and what does that tell you about which axis the contracts actually live on?
+3. Your product ships a jade accent. Which Radix gray is the natural pairing and what measurement backs it — and what does choosing pure `gray` instead trade away, and when is that the right call?
+
+## Further reading
+
+- [Radix Colors — Composing a palette](https://www.radix-ui.com/colors/docs/palette-composition/composing-a-palette) — the six grays, what each is "based on," and the natural-pairing chart this chapter measured.
+- [`radix-ui/colors` — `light.ts`](https://github.com/radix-ui/colors/blob/main/src/light.ts) — the published hexes; every chroma and hue in this chapter recomputes from these.
+- [Refactoring UI (Wathan & Schoger)](https://www.refactoringui.com/) — the book's "Building Your Color Palette" chapter carries the "greys don't have to be grey" tip: blue-ward cool, yellow-ward warm. It's in the book itself; the free preview of the chapter stops short of it.
+- [dotUI — `producers/oklch.ts`](https://github.com/mehdibha/dotUI/blob/main/packages/colors/src/producers/oklch.ts) — the `neutral` flag and its hardcoded 0.012 cap: the engine this chapter audits.

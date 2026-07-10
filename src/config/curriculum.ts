@@ -115,7 +115,7 @@ export const curriculum: Part[] = [
         slug: 'neutrals',
         number: 15,
         title: 'Neutrals and tinted grays',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'dark-mode',
