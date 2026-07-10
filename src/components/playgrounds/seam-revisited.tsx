@@ -5,7 +5,8 @@ export function SeamRevisited() {
     <Demo
       caption={
         <>
-          Chapter 2's seam, second sighting. The left half is{' '}
+          Chapter 2's seam, second sighting — same boundary, a greener corner of
+          it this time. The left half is{' '}
           <code className="font-mono text-[0.8rem]">#00ff00</code> — the most
           vivid green sRGB has. The right asks for more chroma than sRGB holds.
           On a wide-gamut screen you see a seam: the right half is a Display P3

@@ -69,10 +69,12 @@ export function OneRampTwoRescues() {
           the steering instrument from chapter 5: each step's hue, re-rendered
           at one fixed lightness and chroma. Clip bends the top of the ramp 34°
           toward cyan and darkens it (the L 0.92 step renders at L 0.83); its
-          hue strip visibly turns. Chroma reduction holds lightness and hue dead
-          straight — and quietly pays for it, draining the top step to C 0.042,
-          a near-gray. And compare the first two rows on your screen: identical.
-          That's your browser choosing clip.
+          hue strip visibly turns. Chroma reduction holds lightness and hue
+          essentially straight — within the mapping's just-noticeable tolerance
+          — and quietly pays for it, draining the top step to C 0.042, a
+          near-gray. On an sRGB screen the first two rows are identical: that's
+          your browser choosing clip. On a P3 screen the top row stays a touch
+          more vivid — same clip, wider tent.
         </>
       }
     >
@@ -87,7 +89,7 @@ export function OneRampTwoRescues() {
           hueChips={STEPS.map((s) => s.clipHueChip)}
         />
         <Strip
-          label="chroma reduction"
+          label="CSS gamut map"
           colors={STEPS.map((s) => s.mapHex)}
           hueChips={STEPS.map((s) => s.mapHueChip)}
         />

@@ -18,8 +18,9 @@ const inP3 = inGamut('p3')
 const gamutMap = toGamut('rgb', 'oklch')
 
 const C_MAX = 0.42
-const ROWS = 120
-const COLS = 168
+// small buffer upscaled by CSS — the fill is a smooth gradient, so this is invisible and ~4× cheaper per hue step
+const ROWS = 60
+const COLS = 84
 
 const W = 480
 const H = 300
@@ -163,9 +164,13 @@ export function GamutSlice() {
         onPointerUp={() => {
           dragging.current = false
         }}
+        onPointerCancel={() => {
+          dragging.current = false
+        }}
       >
         <canvas
           ref={canvasRef}
+          aria-hidden
           width={COLS}
           height={ROWS}
           className="absolute rounded-sm"
@@ -316,11 +321,13 @@ export function GamutSlice() {
 
       <p className="mt-1 font-mono text-[0.7rem] text-fg-muted">
         — sRGB edge&ensp;· - - P3 edge&ensp;·{' '}
-        {inSrgb
-          ? 'inside sRGB: every screen shows this color as-is'
-          : inWide
-            ? 'outside sRGB, inside P3: only wide-gamut screens show it'
-            : 'outside P3 too: no consumer screen shows it'}
+        <span aria-live="polite">
+          {inSrgb
+            ? 'inside sRGB: every screen shows this color as-is'
+            : inWide
+              ? 'outside sRGB, inside P3: only wide-gamut screens show it'
+              : 'outside P3 too: no consumer screen shows it'}
+        </span>
       </p>
 
       <div className="mt-4 flex flex-col gap-3">
@@ -353,11 +360,11 @@ export function GamutSlice() {
         />
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Swatch
           label="your browser paints"
           background={`oklch(${l.toFixed(3)} ${c.toFixed(3)} ${Math.round(h)})`}
-          line1={`oklch(${l.toFixed(2)} ${c.toFixed(3)} ${Math.round(h)})`}
+          line1={`oklch(${l.toFixed(3)} ${c.toFixed(3)} ${Math.round(h)})`}
           line2={
             inSrgb ? 'in gamut — nothing to fix' : 'the literal, as rendered'
           }
@@ -369,7 +376,7 @@ export function GamutSlice() {
           line2={
             inSrgb
               ? 'same color'
-              : `ΔL ${(clipped.l - l).toFixed(3)} · ΔH ${hueDelta(clipped.h ?? 0, h).toFixed(1)}°`
+              : `ΔL ${(clipped.l - l).toFixed(3)} · ΔH ${clipped.h === undefined ? '—' : `${hueDelta(clipped.h, h).toFixed(1)}°`}`
           }
         />
         <Swatch
@@ -386,13 +393,14 @@ export function GamutSlice() {
 
       <p className="mt-4 text-sm text-fg-muted">
         When the ring is off the map, the two strategies land in different
-        places. The map dot walks straight left — hue and lightness held, chroma
-        spent — and stops at the boundary. The clip dot lands wherever chopped
-        channels happen to fall: lower, and (watch ΔH) off this slice entirely,
-        since its hue changed. On an sRGB screen the first square matches the
-        clip square — that's your browser telling you which strategy it ships.
-        On a P3 screen the first square stays more vivid than either as long as
-        the ring is inside the dashed line.
+        places. The map dot walks nearly straight left — hue and lightness held
+        to within a just-noticeable difference, chroma spent — and stops at the
+        boundary. The clip dot lands wherever chopped channels happen to fall:
+        lower, and (watch ΔH) off this slice entirely, since its hue changed. On
+        an sRGB screen the first square matches the clip square — that's your
+        browser telling you which strategy it ships. On a P3 screen the first
+        square stays more vivid than either as long as the ring is inside the
+        dashed line.
       </p>
     </Playground>
   )

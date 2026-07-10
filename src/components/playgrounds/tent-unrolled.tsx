@@ -22,6 +22,23 @@ function maxChroma(l: number, h: number) {
 const HUES = Array.from({ length: 60 }, (_, i) => i * 6)
 const LS = Array.from({ length: 22 }, (_, i) => L_BOTTOM + (i * L_SPAN) / 21)
 
+// the coarse L grid misplaces sharp cusps (yellow) by ~0.04 — refine around the argmax
+function refineCuspL(h: number, coarse: number) {
+  const step = L_SPAN / 21
+  let bestL = coarse
+  let bestC = maxChroma(coarse, h)
+  for (let i = -9; i <= 9; i++) {
+    const l = coarse + (i * step) / 10
+    if (l <= 0 || l >= 1) continue
+    const c = maxChroma(l, h)
+    if (c > bestC) {
+      bestC = c
+      bestL = l
+    }
+  }
+  return bestL
+}
+
 const COLUMNS = HUES.map((h) => {
   const cs = LS.map((l) => maxChroma(l, h))
   let cusp = 0
@@ -35,7 +52,7 @@ const COLUMNS = HUES.map((h) => {
   }).reverse()
   return {
     h,
-    cuspL: LS[cusp] ?? 0.5,
+    cuspL: refineCuspL(h, LS[cusp] ?? 0.5),
     gradient: `linear-gradient(to bottom, ${stops.join(', ')})`,
   }
 })
