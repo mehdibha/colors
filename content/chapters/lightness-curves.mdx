@@ -1,0 +1,102 @@
+---
+title: 'Lightness curves and the three philosophies'
+description: How lightness progresses across the twelve steps is the core generation decision, and the industry has three genuinely different answers — fix the lightness, fix the contrast, or copy a human. Each keeps a different promise, and each lets a different thing drift.
+part: 2
+question: What does each philosophy keep fixed as the hue turns — and what does it let drift?
+---
+
+import { LinearVsEased } from '@/components/playgrounds/linear-vs-eased'
+import { SharedSkeleton } from '@/components/playgrounds/shared-skeleton'
+import { LstarLocksContrast } from '@/components/playgrounds/lstar-locks-contrast'
+import { ContrastDrift } from '@/components/playgrounds/contrast-drift'
+import { MasterStepNines } from '@/components/playgrounds/master-step-nines'
+import { ThreePhilosophiesLab } from '@/components/playgrounds/three-philosophies-lab'
+
+Chapter 10 committed the contract: twelve slots, a job per slot, guarantees at the text end. This chapter starts paying for it. Of the three curves a ramp is made of — lightness, chroma, hue, one per chapter — lightness comes first because it does almost all the work: the jobs' spacing is lightness spacing, and chapter 8's meters run on luminance, so every contrast guarantee in the contract is, underneath, a claim about where L landed. **How L progresses from step 1 to step 12 is the core generation decision**, and the industry has settled into three genuinely different answers.
+
+Hold chroma and hue constant in your head for two chapters — they get their own (12 and 13). Today the only knob is the skeleton: the list of twelve lightness values.
+
+## First, the shape: nobody ships a straight line
+
+Before choosing a philosophy, kill the obvious default. You know from chapter 5 how to step L evenly — twelve stops, equal ΔL, perceptually honest spacing. Here's what that honesty buys:
+
+<LinearVsEased />
+
+The straight line spends 0.064 L on every gap, and the jobs don't want that. Steps 1–3 are surfaces that differ by a whisper — chapter 10 measured Radix blue's first gaps at 1.3 and 2.6 L\* — but the line hands them three loud strides, so the card and its hover state read as different rooms. Meanwhile the middle of the scale, where almost nothing lives, gets the same fine resolution as the ends. Real skeletons **ease**: the anchors dotUI ships spend 0.038 on the first gap and up to 0.087 mid-scale; Tailwind blue spends 3.8 points of OKLCH L between 50 and 100, then 7.7 between 500 and 600, 9.7 between 900 and 950. Resolution goes where the jobs cluster — the light end in a light theme — and the scale strides through the middle. Equal spacing was chapter 5's tool; the job list is what decides where to spend it.
+
+So every philosophy below ships an eased curve. What they disagree about is what the curve is _anchored to_.
+
+## Philosophy one: anchor the lightness
+
+The first answer: write the twelve L values down once, and give every hue the same list. Tailwind works this way — blue-500 is `oklch(62.3% 0.214 259.815)`, red-500 is `oklch(63.7% 0.237 25.331)`, most of the palette sharing one skeleton to within a few points. dotUI's current engine works this way too: a fixed array of lightness anchors, hue and chroma painted on top.
+
+<SharedSkeleton />
+
+What you buy is **cross-hue consistency for free**. Every scale has the same geometry, so chapter 10's card survives re-aiming by construction — same whispers between surfaces, same cliff before the text steps, at every hue. Tokens stay constants: step 9 is one committed value per hue, not a moving target. And the engine is trivially simple — no solving, no reference data.
+
+What you give up is the guarantee. OKLCH L is perceptual lightness, not luminance — chapter 5 flagged the gap — and WCAG's meter runs on luminance. Pin L at 0.62 at button-strength chroma (C 0.2, clamped to sRGB) and turn the hue: the emitted light drifts from Y 0.212 at red to 0.260 at green, and white text's ratio slides from 4.00:1 to 3.39:1 — the demo above reads the same slide off step 7. Same anchored L, different verdict. **Under lightness anchoring, contrast is an outcome, not a promise** — the skeleton is designed, the guarantee is checked afterward, and some hue will always be the one that fails the audit.
+
+Even the flagship lightness-anchored system knows where this bites hardest. Tailwind's blue and red skeletons agree to within ~3 L points — but yellow breaks formation by 17.2 at step 500 and amber by 14.6, sitting at 79.5 and 76.9 where blue-500 sits at 62.3. A mid-lightness vivid yellow doesn't exist (chapter 6's tent is why: yellow's gamut cusp is high), so the hand bends the skeleton for the hues that can't follow it. Keep that crack in mind; it becomes philosophy three's whole argument.
+
+## The bridge: anchor in L\* and the ratio locks
+
+There's a variant of lightness anchoring that quietly earns a guarantee, and it's worth understanding because it explains what the second philosophy is really doing. Anchor the skeleton not in OKLCH L but in **CIELAB L\*** — chapter 3's meter. L\* (in D65 Lab) is a pure function of the Y inside WCAG's formula: fix one and you've fixed the other, regardless of hue or chroma.
+
+<LstarLocksContrast />
+
+Six hues at L\* 49.8, and every one of them scores 4.5 against white to within hex-rounding — the analytic value is 4.52:1, computable before you've picked a single hue. This is the [Accessible Palette](https://wildbit.com/blog/accessible-palette-stop-using-hsl-for-color-systems) construction: a fixed ladder of L\* levels (Postmark's runs 98, 93.3, 88.6, … 15.6), which the tool's author chose precisely so that "predictable contrast ratios across color levels" comes with the skeleton. One decision buys both cross-hue consistency _and_ a WCAG guarantee — with two catches. The guarantee only holds against the background the ladder was aimed at (a promise must name its backgrounds — chapter 10). And it's WCAG-only: APCA's response isn't a pure ratio of Y, so the lock is a lock on one meter.
+
+## Philosophy two: anchor the contrast
+
+The second philosophy stops treating contrast as something to verify and makes it the input. Don't write down L values at all — write down twelve **contrast targets**, and solve each step's lightness so it hits its target against the background. This is Adobe [Leonardo](https://github.com/adobe/leonardo): a `Color` is declared as a list of "target contrast ratios," a `BackgroundColor` is declared once, and the generator works backward to the swatches — with the scoring model switchable between WCAG 2 and APCA, the parameter chapter 8 promised would turn out to be the whole subject.
+
+The solve itself is unglamorous — the target ratio fixes a Y, and bisection finds the L that emits it (one subtlety: a ratio doesn't say which _side_ of the background you're on; the targets must also declare lighter-or-darker, which is why Leonardo's ratios are signed). What matters is what the palette becomes:
+
+<ContrastDrift />
+
+What you buy is the strongest promise in this chapter: **the guarantee is by construction.** A step doesn't _usually_ hit its target ratio — it hits it, at every hue, because the target is what the step _is_. Change the background and the ramp re-solves, which is exactly what Leonardo was built for: its `Theme` takes a lightness from 0–100 and a contrast multiplier, so end users can drag the whole interface brighter or darker and every pairing keeps its target — adaptive theming as a first-class feature, not a regeneration script.
+
+What you give up is the skeleton. The L values are solver output now, not design: dim the page from white to a light gray and all twelve steps slide down by 0.03–0.10 L. Your palette stops being a set of constants and becomes a function of the background — powerful, and genuinely harder to hold in your head, document, or hand to a brand team ("what's our step 9?" — "against which background?"). The targets are also still a designed curve, just denominated in contrast units instead of lightness; and they inherit their meter's blind spots wholesale. Anchor to WCAG ratios and dark-mode ramps inherit chapter 8's dark-pair over-credit; anchor to Lc and you've built on a candidate, not a standard. A contrast-anchored engine must name its meter out loud — the guarantee is only as good as the ruler.
+
+## Philosophy three: interpolate toward a hand-tuned master
+
+The third philosophy says both of the above are too clever. A great scale — the argument goes — is a piece of _taste_: the yellow that stays yellow by going light and flipping to dark text, the violet solid that sits 0.11 L deeper than the blue one because that's where violet looks right. You don't generate taste from a formula; you hire a human to perfect a master scale per hue family, and generation means **staying as close to the masters as the seed allows**.
+
+Radix is the canonical case. The twelve hand-tuned steps you studied in chapter 10 are the product; for custom brand colors, their generator (`generate-radix-colors.tsx`, in the radix-ui/website source) finds the two hand-tuned scales closest to your seed by ΔEOK, mixes them step-by-step — in proportions worked out from the triangle the three colors form — then re-aims the mixed scale's hue and chroma at your seed and eases its lightness progression onto your background with a bézier curve. The docs state the philosophy plainly: "the generated scales are based on the Radix Colors scales themselves," and the contrast caveat is honest — "as long as you use a reasonable background color, the contrast ratios will be similar to what Radix Colors provide." Similar. Not guaranteed: the promise is fidelity to a reference, not a number.
+
+What you buy is the highest fidelity of the three. Look at what the masters know that no fixed skeleton does: Radix blue's step 9 sits at L 0.649, violet's at 0.542, yellow's at 0.918 — because a human decided, per hue, where the solid looks best and which text color it takes. A lightness-anchored engine ships mustard at hue 100; a contrast-anchored one ships a dark olive that dutifully passes; the reference philosophy ships an actual yellow and flips the label, exactly as chapter 10's solid-step demo said real systems do.
+
+<MasterStepNines />
+
+What you give up is flexibility. The masters _are_ the design space: twelve steps, these jobs, this taste. Want 10 steps, different guarantees, a different aesthetic than the reference's authors? You're re-tuning masters by hand — the one part that doesn't scale. Interpolation also gravitates toward the references: seeds between masters get blends, and a seed unlike anything in the reference set gets its nearest neighbors' opinion whether it fits or not.
+
+## The lab
+
+Same seed hue, three engines. The reference row here interpolates the eight Radix masters directly — a simplified stand-in for Radix's real generator, not its output. The curve plot is the chapter: watch which rows freeze and which drift as you turn the hue.
+
+<ThreePhilosophiesLab />
+
+Worth doing, in order:
+
+- **Turn the hue slowly across 60–120° in each philosophy.** Lightness-anchored: the L row is a wall; the contrast row wobbles. Contrast-anchored: the contrast row is a wall; the L row barely moves — but remember the drift demo: it's the _background_ that moves it. Hand-tuned: both rows reshape, because amber and yellow's masters lift steps 9–10 wholesale.
+- **Park at ~100° and read step 9 three ways.** A mustard, a passing olive, a real yellow at 1.3:1 under white text. None of the three is wrong; they're keeping different promises.
+- **Compare the ghost curves.** The three skeletons agree at the extremes — everyone's step 1 is near-white, everyone's step 12 is dark — and disagree exactly where the jobs are hardest: the solid steps.
+
+## The decision
+
+This isn't an abstract taxonomy — it's the fork dotUI's engine is standing at, and this course exists to re-make the choice deliberately. The engine today is lightness-anchored: a fixed anchor array as the default producer, with a contrast-locked producer demoted from default to option — cross-hue consistency won, guarantees moved out of the constructor. Chapter 10 gives the honest framing for any of the three: the output contract demands _named guarantees_, and each philosophy just relocates where they're enforced. Lightness-anchored enforces them in verification — generate, then audit every hue against the contract, and adjust what fails. Contrast-anchored enforces them in construction and pays with a palette that's a function of its background. Reference enforces them by inheritance and pays in flexibility. The mature engines mix postures: an anchored skeleton for stability, a verifier in CI for the contract, hand-bent exceptions where the gamut forces them — Tailwind's amber is exactly that hybrid, shipped.
+
+What this chapter deliberately left dangling: every ramp here held chroma to one modest curve, and the yellow problem kept leaking through anyway — chroma against the gamut ceiling is chapter 12. The skeleton for a _dark_ background is not this skeleton flipped — chapter 16. And dropping an arbitrary brand seed onto whichever skeleton you chose is chapter 14's fight.
+
+## Check yourself
+
+1. Your lightness-anchored palette passes its 4.5:1 audit with the brand blue. Marketing changes the brand to a green of the same OKLCH lightness. What happens to the audit, and what fact about OKLCH L — versus CIELAB L\* — explains it?
+2. A contrast-anchored engine re-solves the palette when the app background shifts from white to warm gray. What stays exactly fixed, what moves, and why does "step 9 is our brand color" become a complicated sentence?
+3. At hue 100, the three philosophies ship a mustard, a dark passing olive, and a bright yellow with black text. Explain each output from its philosophy's promise — and name what the yellow-shipping philosophy gave up to be able to do that.
+
+## Further reading
+
+- [Accessible Palette: stop using HSL for color systems](https://wildbit.com/blog/accessible-palette-stop-using-hsl-for-color-systems) — the L\*-anchored construction: fixed CIELAB lightness levels chosen for predictable WCAG ratios, with the Postmark ladder as the worked example.
+- [Adobe Leonardo](https://github.com/adobe/leonardo) — the contrast-anchored generator: colors declared as target-contrast lists against a background, themes with user-adjustable lightness and contrast; the live tool is at [leonardocolor.io](https://leonardocolor.io).
+- [Radix Colors — custom palettes](https://www.radix-ui.com/colors/docs/overview/custom-palettes) — the reference philosophy stated in one page; the generation source is `generate-radix-colors.tsx` in the [radix-ui/website](https://github.com/radix-ui/website) repository, and it's short enough to read.
+- [Tailwind CSS — Colors](https://tailwindcss.com/docs/colors) — the shipped OKLCH palette; put two hues' L values side by side and you can read the shared skeleton, and yellow and amber's exceptions, straight off the reference table.

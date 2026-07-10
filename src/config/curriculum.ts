@@ -91,7 +91,7 @@ export const curriculum: Part[] = [
         slug: 'lightness-curves',
         number: 11,
         title: 'Lightness curves and the three philosophies',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'chroma-curves',
