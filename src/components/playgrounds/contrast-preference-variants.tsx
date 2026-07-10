@@ -74,7 +74,10 @@ export function ContrastPreferenceVariants() {
           </div>
         </div>
 
-        <div className="flex gap-6 font-mono text-xs text-fg-muted tabular-nums">
+        <div
+          className="flex gap-6 font-mono text-xs text-fg-muted tabular-nums"
+          aria-live="polite"
+        >
           <span>secondary text {mutedRatio.toFixed(2)}:1</span>
           <span>border {borderRatio.toFixed(2)}:1</span>
         </div>

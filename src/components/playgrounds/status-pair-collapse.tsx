@@ -17,7 +17,7 @@ const dEok = differenceEuclidean('oklab')
 const deutan = filterDeficiencyDeuter(1)
 const lstar = (hex: string) => Math.round(toLab(hex)?.l ?? 0)
 
-// Hue alone: a same-lightness red/green — the textbook trap.
+// Hue alone: a red/green at nearly the same lightness — the textbook trap.
 const HUE_ONLY = { pass: '#30a46c', fail: '#e5484d' }
 // Redesigned: lightness gap + icon + word. Any one of the three would rescue it.
 const REDESIGNED = { pass: '#75e0a7', fail: '#b42318' }
@@ -39,11 +39,13 @@ export function StatusPairCollapse() {
       caption={
         <>
           Both rows say the same thing: green is good, red is bad. The top row
-          says it with hue alone, at one lightness — under deutan its two chips
-          become the same olive (ΔEok {pair(HUE_ONLY)}), and the traffic-light
-          convention evaporates. The bottom row keeps a large lightness gap (L*{' '}
-          {lstar(REDESIGNED.fail)} vs {lstar(REDESIGNED.pass)}), an icon, and a
-          word — remove the color entirely and it still reads. The rule:{' '}
+          says it with hue alone, at nearly the same lightness — under deutan
+          its two chips become the same olive (
+          <span aria-live="polite">ΔEok {pair(HUE_ONLY)}</span>), and the
+          traffic-light convention evaporates. The bottom row keeps a large
+          lightness gap (L* {lstar(REDESIGNED.fail)} vs {lstar(REDESIGNED.pass)}
+          ), an icon, and a word — remove the color entirely and it still reads.
+          The rule:{' '}
           <strong className="text-fg">
             never let hue be the only difference.
           </strong>

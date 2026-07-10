@@ -25,7 +25,7 @@ Normal color vision runs on three cone types, tuned to long, medium, and short w
 - **Red-green deficiency** is by far the most common: the long-wavelength cone (**protan**) or medium-wavelength cone (**deutan**) is shifted (the "-anomaly" forms — reduced discrimination) or missing entirely (the "-anopia" forms). Deuteranomaly alone accounts for most of the 8%. Both live on the X chromosome, which is why men, with their single X, are hit an order of magnitude more often than women.
 - **Tritan** — the short-wavelength cone, the blue-yellow axis — is rare (well under 0.1%), often acquired rather than inherited, and not sex-linked.
 
-The practical shape of it: red-green vision is essentially _one channel_, and protan and deutan knock it out. Lose it and every hue that depended on it becomes a synonym for its neighbors. You can watch the collapse directly — twelve hues, equally spaced, equal lightness and chroma, nothing separating them but angle:
+The practical shape of it: red-green vision is essentially _one channel_, and protan and deutan knock it out. Lose it and every hue that depended on it becomes a synonym for its neighbors. You can watch the collapse directly — twelve hues, equally spaced at one lightness, chroma clamped to what sRGB allows, so angle does nearly all the separating work:
 
 <ConfusionLineWheel />
 
@@ -72,7 +72,7 @@ Here's the whole rule in one pair of rows — the traffic-light status half the 
 
 <StatusPairCollapse />
 
-The top row is a red and a green at the same lightness: correct-looking to you, one indistinguishable olive to a deuteranope. The bottom row carries the same message with a lightness gap, an icon, and a word — grayscale it, simulate any deficiency, and it still reads. This is not a concession to a minority; it's the same robustness that lets a status survive a grayscale printout, a dying projector, or a photo taken in the sun.
+The top row is a red and a green at nearly the same lightness: correct-looking to you, one indistinguishable olive to a deuteranope. The bottom row carries the same message with a lightness gap, an icon, and a word — grayscale it, simulate any deficiency, and it still reads. This is not a concession to a minority; it's the same robustness that lets a status survive a grayscale printout, a dying projector, or a photo taken in the sun.
 
 And because the simulation is just a function, the rule can be enforced by a machine: run every categorical palette and status set through all three filters at severity 1, compute the minimum ΔEok between any two swatches, and fail the build if it drops below a just-noticeable difference under any deficiency. CVD-safety becomes a CI check, exactly like a contrast check.
 
@@ -118,7 +118,7 @@ Three Part 2 chapters inherit this one directly.
 
 1. A teammate ships a status system where "healthy" is green and "down" is red, same lightness, no icons. Roughly what fraction of male users is likely to struggle, which two deficiency types are responsible, and what's the smallest change that fixes it?
 2. "CVD doesn't affect brightness, so if my colors differ in lightness I'm safe." Where exactly is that sentence wrong, and what does it mean for how much you can lean on OKLCH L alone?
-3. A user has Windows High Contrast on. Your card uses a background gradient, a drop shadow, and a colored left border to signal "premium." What does the browser do to each of those three, and which one survives to do the signaling?
+3. A user has Windows High Contrast on. Your card uses a background gradient, a drop shadow, and a colored left border to signal "premium." What does the browser do to each of those three — and for the one still drawing anything, what exactly survives: its geometry, its color, or both?
 
 ## Further reading
 

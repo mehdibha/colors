@@ -134,7 +134,7 @@ export function CvdSimulator() {
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="shrink-0 text-xs text-fg-muted">Simulate</span>
             <ToggleButtonGroup
               selectionMode="single"
@@ -264,12 +264,13 @@ export function CvdSimulator() {
         <p className="text-sm text-fg-muted">
           The brand ramp shrugs off every deficiency — it never asked hue to
           carry meaning. The status pills and the chart do, and they pay for it:
-          switch to <strong className="text-fg">Deutan</strong> and the red,
-          amber and green slide into one band of olive-brown while blue holds
-          its ground. What survives, survives on the two things CVD can&rsquo;t
-          take away — a lightness difference (ΔL*) or the blue&ndash;yellow
-          axis. Encode meaning in hue alone and this is what a tenth of your
-          male users get.
+          under <strong className="text-fg">Deutan</strong> — the view
+          you&rsquo;re looking at right now — the red, amber and green slide
+          into one band of olive-brown while blue holds its ground. What
+          survives, survives on the two things CVD can&rsquo;t take away — a
+          lightness difference (ΔL*) or the blue&ndash;yellow axis. Encode
+          meaning in hue alone and this is what one in twelve of your male users
+          gets.
         </p>
       </div>
     </Playground>
@@ -293,7 +294,7 @@ function Readout({
         <span className={`size-2 shrink-0 rounded-full ${dot}`} />
         <span className="text-xs font-medium">{title}</span>
       </div>
-      <p className="text-xs text-fg-muted">{body}</p>
+      <p className="text-xs text-fg-muted tabular-nums">{body}</p>
     </div>
   )
 }
