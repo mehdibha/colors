@@ -1,0 +1,112 @@
+---
+title: 'Seed to scale: any brand color in'
+description: "The engine's real front door. A user pastes one brand hex and expects a full system back — so the seed's three numbers must each find their job, and then the generator has to answer a question most tools dodge: does the exact color you pasted appear anywhere in the output?"
+part: 2
+question: 'Paste any brand hex — where does it land, and what does shipping it verbatim cost?'
+---
+
+import { ThreeSeedsThreeSlots } from '@/components/playgrounds/three-seeds-three-slots'
+import { ChromaAmbition } from '@/components/playgrounds/chroma-ambition'
+import { WhoKeepsYourHex } from '@/components/playgrounds/who-keeps-your-hex'
+import { GraySeedTwoReadings } from '@/components/playgrounds/gray-seed-two-readings'
+import { SeedToScalePlayground } from '@/components/playgrounds/seed-to-scale-playground'
+
+The three curves are drawn. Chapter 11 chose the lightness skeleton, chapter 12 the chroma arc under the tent, chapter 13 the hue bend — a complete recipe, if you already know what you're cooking. But that's not how the engine gets used. The engine gets used by someone pasting `#635bff` into a box, because that's the color on their landing page, and expecting a design system back. This chapter is the front door: how one arbitrary color becomes twelve — and the question every generator eventually answers, out loud or by omission: _does the color you pasted actually appear in the output?_
+
+## Three numbers, three questions
+
+First move, always: convert the seed to OKLCH. Whatever notation walked in — hex, `rgb()`, `hsl()`, `oklch()` — chapter 2 says it's just a spelling, and chapter 5 says which space the engine thinks in. `#635bff` becomes `oklch(0.578 0.235 278.3)`, and each of the three numbers answers a different question:
+
+- **L asks: where does this color belong on the skeleton?** L 0.578 is a mid-dark — this seed is somewhere around the border-and-solid neighborhood, not a background tint.
+- **C asks: how vivid should the whole family be?** C 0.235 is strong — near the sRGB ceiling for that hue and lightness. The seed isn't just one vivid swatch; it's a vote for a vivid ramp.
+- **H asks: which hue family — and so, which bend policy?** 278° is violet-blue territory, which chapter 13's table says tolerates (and slightly profits from) a small violet-ward drift in the darks.
+
+One check happens at the door. A hex seed can't be outside sRGB — hex _is_ sRGB — but seeds increasingly arrive as `oklch()` or `color(display-p3 …)` strings, and those can stand outside the tent the ramp will be built under. Map them in first (chapter 6's gamut mapping, against chapter 12's chosen tent), or every number downstream describes a color you can't ship. It isn't free: `color(display-p3 0 0.85 0.2)` maps to `#00d252` at a cost of ΔEOK 0.088 — four times the just-noticeable difference — and an honest engine says so instead of silently proceeding.
+
+## The landing slot
+
+The seed's lightness picks its **slot**: the step whose skeleton L is nearest. This is the move that makes the pipeline work for _any_ seed, not just button-colored ones:
+
+<ThreeSeedsThreeSlots />
+
+A vivid violet-blue is a step-7 color on this skeleton. A dark navy is a step-11 color — it was never going to be a good button, but it's a natural low-contrast-text step. A pastel pink is a step-2 color: a subtle background, which is what pastels are. The slot rule reads the seed's nature instead of assuming every brand color is a solid.
+
+Nearest-by-L has a quiet structural virtue: a seed whose lightness lands inside the ladder's range can miss its slot by at most half the widest gap in the skeleton — 0.043 L here — because a bigger miss would mean another step was nearer. Beyond the ends there's no nearer step to save you: `#0a0a0a` sits below the darkest anchor and misses step 12 by 0.093. Either way, keep the seed verbatim at its slot and the ladder _cannot_ reorder; the worst case is one squeezed neighbor gap.
+
+But there's a second slotting rule in the wild, and it disagrees. The brand didn't hand you a "step-7 color" — they handed you _our button color_, a job, and the job's slot is step 9. Radix's custom palette generator takes exactly this position: whatever you paste is aimed at step 9, the solid, period. That's a defensible policy with a real cost: force this skeleton's step 9 (L 0.449) to be the verbatim `#635bff` (L 0.578) and step 9 is now _lighter than step 8_ — the ladder is out of order. Radix survives its own policy because it doesn't drop the seed onto a fixed skeleton at all; it rebuilds the whole scale from hand-tuned masters chosen near the seed, so the neighborhood moves with it. Slotting, in other words, is not a measurement. It's a policy choice — by lightness or by job — and the two only agree when the brand color happens to sit where the job lives.
+
+## Ambition: the seed's chroma scales the arc
+
+Chapter 12 left one input dangling: where does the chroma curve's overall level come from? From the seed. Normalize the arc so the landing slot receives exactly the seed's C, and the rest of the curve scales proportionally — the seed's vividness becomes the family's ambition:
+
+<ChromaAmbition />
+
+Same skeleton, same hue, three seeds differing only in chroma — and three families that read as muted, medium, vivid. Every step still lives under the tent (the clamp from chapter 12 runs as always), so ambition is a request, not a command. Shipped systems put guardrails on both ends of this dial: Radix caps the re-aimed chroma at 1.5× the seed's C — the generator may not make your brand 50% louder than you did — and dotUI floors the peak at C 0.11, so a muted seed still yields a usable accent. Hold that floor in mind; it's about to become a problem.
+
+## Does the exact seed ship?
+
+Now the chapter's hard question. The user pasted one exact color. Ask the shipped generators whether it comes back out:
+
+<WhoKeepsYourHex />
+
+The spread is the whole trade-off. **Radix says yes**: `getStep9Colors` in the generator source returns your accent color verbatim, and it's written straight into step 9 — the only guard is a seed within ΔEOK 0.25 of the scale's background step (white-on-white territory), which snaps instead. Step 10 is then _derived_ from your seed (its hover state: nudged darker and slightly desaturated for light seeds, lighter with chroma untouched for dark ones), and the text steps have their chroma capped relative to it. The brand is exactly on; the contrast caveat in their docs is correspondingly honest — ratios "will be similar" to Radix's own, not guaranteed.
+
+**Material says no, in writing.** The default dynamic-color scheme keeps precisely one of your seed's three numbers — the hue — and throws the rest away: the primary tonal palette is built at a policy chroma of 36, and the role system takes tones from it (tone 40 for primary in light mode, 80 in dark). Flutter's `ColorScheme.fromSeed` documentation states the consequence plainly: "Given the nature of the algorithm, the seedColor may not wind up as one of the ColorScheme colors." There's a separate `fidelity` variant whose whole purpose is to put the seed back — and even that places it in the primary _container_ role, adjusted by about 5 tone per mode. At Google's scale, system integrity beat brand fidelity, and they shipped the memo.
+
+**Leonardo says only by accident.** Your seed is a _key color_ — in the docs' words, one of a "list of specific colors to interpolate between in order to generate a full lightness scale of the color." The key colors define the path; the output swatches are sampled from that path at target contrast ratios (chapter 11's second philosophy). The exact key color appears only if a target happens to land on its lightness — and the docs note the tool usually outputs a ratio "slightly higher" than asked, so even then it's a near miss by design.
+
+So the two poles, named: **seed-verbatim** buys brand fidelity and pays by making the slot's contract hostage to the seed — whatever guarantee that step advertised now depends on a color the engine didn't choose. **Seed-nearest (snap)** buys system integrity — the skeleton's L, the audited contrast, the even ladder — and pays in brand: the pasted `#635bff` becomes `#7c66ff` at its slot, ΔEOK 0.047, more than twice the 0.02 threshold the CSS gamut-mapping spec treats as just noticeable. A brand designer _will_ see that. Neither answer is wrong; quietly picking one without telling the user is.
+
+## Seeds that fight back
+
+A front door takes whatever knocks. Four families of seed try to break the pipeline, and each needs a named answer rather than an exception.
+
+**Near-white and near-black.** `#fdfdfc` lands at step 1 and `#0a0a0a` below step 12 — fine so far; the ends are real slots. The trap is ambition: near the ends of the L axis the gamut ceiling is nearly closed (at L 0.994 the most chroma _any_ hue affords is about 0.03), so the seed's C is a measurement taken where nothing can be measured. Read ambition off a near-white seed and every ramp comes out gray, whatever the brand intended. Radix's generator special-cases the extremes outright: paste pure `#fff` or `#000` and the accent scale is quietly replaced with a copy of the gray scale — the most honest available reading of a seed that carries no hue information at all. (The verbatim policy still runs afterwards, though: on a light background pure `#000` is far from the background step, so it ships verbatim as step 9 of that gray copy.)
+
+**Near-gray.** The genuinely ambiguous case — C 0.010 could be a brand's tinted neutral or a muted accent, and the pipeline cannot tell which:
+
+<GraySeedTwoReadings />
+
+dotUI's chroma floor answers this question by fiat: every seed becomes an accent, even one whisker from gray. That's the right default for an accent producer and the wrong behavior for a system intake — the accent-or-neutral fork deserves to be a decision, and it's chapter 15's.
+
+**Out-of-sRGB seeds.** Already met at the door: map to the working tent first and report the cost. The deeper version — a brand that genuinely lives in P3 and wants its ramp built under the taller tent — is chapter 12's two-curve story and ships in chapter 20.
+
+**Yellow, again.** A mustard seed like `#eab308` — `oklch(0.795 0.162 86.0)` — slots cleanly at step 5 and immediately re-raises chapter 13's problem: carry its hue flat into the darks and they go olive. The bend table answers at intake — hue 86 gets the warm family's rescue automatically — which is why the bend had to be a per-family default and not a per-ramp hand fix: the front door doesn't know which hue is coming.
+
+## The playground
+
+The whole front door, live. Paste anything culori can parse — hex, `oklch()`, `color(display-p3 …)`:
+
+<SeedToScalePlayground />
+
+Worth doing, in order:
+
+- **Read the default.** `#635bff`, snap policy, nearest slot: it lands at step 7, and the snapped swatch differs from the seed by ΔEOK 0.047 — the brand cost, printed instead of hidden.
+- **Flip to verbatim.** The exact hex ships; the L plot kinks by −0.036 at the slot. Step order survives — nearest-slot verbatim can squeeze a gap but never reorder.
+- **Switch the anchor to step 9.** Same seed, job slotting: even this classic button color is lighter than the skeleton's solid slot, and verbatim now puts the ladder out of order. That's the risk Radix absorbs by rebuilding the scale around the seed.
+- **Try Navy.** ΔL −0.009 at step 11: verbatim is nearly free when the seed lands close. The cost of verbatim isn't a constant — it's the size of the miss.
+- **Near-white, near-black, near-gray.** Watch ambition collapse and the ramp go gray, and read the warning: the pipeline is admitting it can't answer the accent-or-neutral question.
+- **P3 green.** Mapped to `#00d252` before slotting, ΔEOK 0.088, flagged. The engine never pretends it shipped the original.
+- **Mustard.** The darks hold gold, not olive — chapter 13's bend, applied automatically at intake.
+
+## The decision this unlocks
+
+dotUI's engine has a seed policy today; it just never made it out loud. The default producer reads the seed's chroma (through the envelope, floored at 0.11) and its hue (through `hueTorsion`, default 0) — and discards its lightness entirely; the source comment says so verbatim: "the seed's lightness is discarded — the ramp's L comes entirely from the perceptual array." There _is_ an opt-in `preserveSeedAt` that pins the seed at a named step and rescales each half of the skeleton around it, monotonicity preserved — a genuinely good mechanism — but it pins only the lightness: the step's chroma still comes from the envelope and its hue from the torsion, so the option called "preserve seed" ships the exact seed only by coincidence. And nothing slots automatically — the user must name the step, which means the engine never faces the navy-versus-pastel question at all.
+
+The rewrite this chapter specs: read the seed once at the door — map it to the working tent (report the cost), classify accent-versus-neutral (chapter 15's rule, not a silent floor), find the landing slot by nearest L with a named-step override. Snap by default: system integrity is the right default for a builder whose whole pitch is audited contracts. Offer seed-verbatim as an explicit switch that means what it says — pin all three numbers at the slot, rescale the skeleton halves around it — and print both prices on the toggle: the brand's ΔEOK if you snap, the slot's contract drift if you don't. Every generator in this chapter chose a side; the failure mode isn't choosing wrong, it's choosing silently.
+
+Two threads leave the door open. Whether a near-gray seed becomes a tinted neutral instead of an accent is chapter 15. And everything here generated one light-mode ramp — the same seed owes a second, differently-built ramp for dark backgrounds, which is chapter 16's problem.
+
+## Check yourself
+
+1. A pastel brand pink lands at step 2 by lightness, but the brand meant it as their button color. Name the two slotting rules in play, what each would do with the pastel, and which of the two can put the ladder out of order.
+2. The same seed goes into Radix's custom palette generator and into Material's default dynamic scheme. For each: which of the seed's three OKLCH numbers survives, and where — if anywhere — does the exact pasted color appear in the output?
+3. Snap and verbatim each keep one promise by breaking another. Name what each keeps, what each costs, and who controls that cost — the engine, or whoever picked the brand color.
+
+## Further reading
+
+- [`generate-radix-colors.tsx`](https://github.com/radix-ui/website/blob/main/components/generate-radix-colors.tsx) — the seed-verbatim policy in source: `getStep9Colors` and its one guard, the derived hover step, the 1.5× chroma cap.
+- [Radix Colors — custom palettes](https://www.radix-ui.com/colors/docs/overview/custom-palettes) — the honest caveat that generated contrast "will be similar," not guaranteed.
+- [Flutter `ColorScheme.fromSeed`](https://api.flutter.dev/flutter/material/ColorScheme/ColorScheme.fromSeed.html) — "the seedColor may not wind up as one of the ColorScheme colors," and the scheme variants, `fidelity` included.
+- [material-color-utilities](https://github.com/material-foundation/material-color-utilities) — `DynamicScheme`'s per-variant palettes (the default's fixed chroma 36) and `SchemeFidelity`, which "places the source color in Scheme.primaryContainer."
+- [Adobe Leonardo — `@adobe/leonardo-contrast-colors`](https://github.com/adobe/leonardo/tree/main/packages/contrast-colors) — key colors as interpolation anchors, swatches picked by target contrast ratios.
