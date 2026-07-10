@@ -1,0 +1,123 @@
+---
+title: Mixing and interpolation
+description: linear-gradient(blue, yellow) puts gray concrete in the middle, and nobody wrote it there. Every in-between color is arithmetic in some space — which space owns which mixing job, the hue-path choices polar spaces add, and the CSS defaults that quietly changed.
+part: 1
+question: Same two endpoints — who picks the middle?
+---
+
+import { TheGrayNobodyChose } from '@/components/playgrounds/the-gray-nobody-chose'
+import { TwoGraysReturn } from '@/components/playgrounds/two-grays-return'
+import { InterpolationLab } from '@/components/playgrounds/interpolation-lab'
+import { FourWaysAroundTheWheel } from '@/components/playgrounds/four-ways-around-the-wheel'
+import { SpellingChangesTheMiddle } from '@/components/playgrounds/spelling-changes-the-middle'
+import { GamutDoorGradient } from '@/components/playgrounds/gamut-door-gradient'
+
+You write a gradient from blue to yellow. What renders has a band of gray concrete in the middle. You chose two colors; the gray isn't either of them, and it isn't in your CSS. Something put it there.
+
+<TheGrayNobodyChose />
+
+That something is the **interpolation space** — the coordinate system a gradient, a `color-mix()`, or a transition does its arithmetic in. Every chapter so far placed single colors: what a coordinate means, which ladder it lives on, which knobs are honest, where the screen ends. Two of them ended with the same IOU — chapter 5 said knowing where colors live "doesn't yet say how to travel between them," and chapter 6 warned that a path between two showable colors "can still swing outside on the way." Both come due now.
+
+## Midpoints all the way down
+
+Strip the syntax and every mixing feature is one operation repeated. To color the pixel halfway along a gradient, average each coordinate of the endpoints; a quarter of the way, weight the average three to one. `color-mix()` is a single midpoint; a gradient is midpoints all the way down; a `transition` is midpoints spread over time. Two endpoints pin down where the path starts and ends — nothing else. **The space decides the route, and the route is the gradient.**
+
+So the entire question is chapter 3's question wearing new clothes: average on which ladder? Take the opening gradient. Blue is `rgb(0 0 255)`, yellow is `rgb(255 255 0)` — opposite corners of the sRGB cube, and the straight line between opposite corners passes dead through the cube's gray center. That's the **dead zone**, and chapter 3's two grays both show up to claim it:
+
+<TwoGraysReturn />
+
+The value ladder's answer is `#808080` — averaging encoded values systematically darkens and desaturates, and between two vivid complements it doesn't just dull, it dies. The light ladder's answer, `#bcbcbc`, is physically _correct_: photons add, and this is genuinely what half blue's light plus half yellow's light amounts to — if the job is simulating light (blur, glow, blending lights), this is the right route, and chapter 3 already filed those jobs under linear. But as a _midpoint_ it fails perception the other way: half the light reads as three-quarters bright. OKLab's answer is the one your eye accepts — believable mid lightness, evenly paced steps on either side. Chapter 5's uniformity promise, applied to travel instead of a ramp.
+
+## The lab
+
+Stop taking midpoints on faith — watch whole paths, with instruments.
+
+<InterpolationLab />
+
+What to hunt for, preset by preset. **Blue → Yellow:** the sRGB row's hue strip goes literally gray at the center — the dead zone isn't dim color, it's _no_ color. OKLab's twins are metronome-even, but its own chroma sags to 0.056 mid-path: OKLab's a and b are opponent axes, distant hues sit on opposite sides of gray, and a straight chord between them cuts inside the wheel. OKLCH holds the vividness — and collects tick marks, because the vivid road asks for colors your screen doesn't have. **Red → Green:** the mud — watch the sRGB twins dip _darker than both ends_. **Black → White:** no hue to steer, so it's a pure pacing test, and it's chapter 3 verbatim: linear's "midpoint" is the gray that looks three-quarters of the way to white, while sRGB's 128 and OKLab's answer bracket the ~119 most people picked in the midpoint hunt. **Two blues:** the control group — every row except linear agrees to within ΔEOK 0.008, well under chapter 6's just-noticeable 0.02. **Interpolation space matters in proportion to the distance between endpoints**: between neighbors, any perceptual-ish space is fine; between strangers, the space is the design.
+
+## Polar roads: picking the arc
+
+OKLCH's hue is an angle, and between two angles there are always two arcs. Sometimes OKLab's quiet, neutral crossing is exactly what a design wants; when the mix should _stay a color_ the whole way, you want the road around gray, and an arc raises a question the chord never asked: _which way around?_ CSS names four policies, and culori implements the same four:
+
+<FourWaysAroundTheWheel />
+
+`shorter` — the default everywhere — takes the smaller arc. `longer` takes the scenic route. `increasing` and `decreasing` don't compare arc lengths at all; they fix a direction of travel. They exist for animation: if an endpoint's hue animates across the 180° mark, `shorter` snaps to the other arc mid-animation, while a fixed direction never flips. In the lab above, Blue → Yellow's `shorter` road runs down through teal and green; `longer` climbs through magenta and fire — the halfway color is a hot pink. Same two endpoints, whole different countries in between.
+
+Here's the polar trade in one sentence: rectangular OKLab can never overshoot vividness but sags toward gray between distant hues; polar OKLCH holds vividness but must choose a route — and vivid routes have tolls.
+
+## The door, revisited
+
+The toll is chapter 6's door. Both `#0000ff` and `#ffff00` are plain sRGB colors — in gamut on every screen ever made. The OKLCH path between them holds interpolated chroma through hues where sRGB's tent is low: near hue 229° it asks for C 0.29 where the ceiling is 0.112 — two and a half times the chroma that exists. The ticks in the lab already counted it: 73% of the path is off the map. This isn't an OKLCH quirk, it's geometry: the sRGB gamut is only convex in its own coordinates, so **the only space whose straight lines can never leave sRGB is sRGB itself** — the mud-maker's one honest virtue. Even OKLab's sagging chord pokes outside near the saturated blue end.
+
+<GamutDoorGradient />
+
+You know the rescue from chapter 6, and it hasn't improved: browsers clip per channel, per pixel, on the way to the glass — the method the spec calls least acceptable, applied mid-gradient where the overshoot is biggest. The engine conclusion is chapter 6's, extended from points to paths: never emit a path and hope. **Gamut-check the path, not the endpoints** — if a gradient's road leaves the gamut, either pick a calmer road at generation time or gamut-map the stops yourself.
+
+## What CSS actually does
+
+The syntax, where CSS gives you the choice:
+
+```css
+background: linear-gradient(in oklab, #0000ff, #ffff00);
+background: linear-gradient(in oklch longer hue, #0000ff, #ffff00);
+color: color-mix(in oklch, var(--brand) 70%, black);
+```
+
+The defaults are where precision pays, because the two features **disagree**. CSS Color 4 sets the baseline: when nothing says otherwise, interpolation defaults to OKLab — but user agents _must_ interpolate between legacy sRGB color formats (hex, named colors, `rgb()`, `hsl()`, `hwb()`) in gamma-encoded sRGB, so that two decades of existing gradients keep rendering as designed. The spec is candid that this is the compatibility pick, kept "even though it produces poorer results (overly dark or greyish mixes)." Gradients inherit exactly that pair of rules. `color-mix()` — a new function with no legacy content to protect — gets no carve-out: CSS Color 5 says plainly, "If no color interpolation method is specified, assume Oklab," whatever notation the colors arrive in. So `linear-gradient(blue, yellow)` makes the gray dead zone while `color-mix(in oklab)`-style mixing never did — same two colors, different rules. Transitions and animations offer no `in` syntax at all: by spec, a `transition` between two hex values runs through gamma sRGB with no way to opt out.
+
+And the gradient rule reads _syntax_, not values — a gradient's geometry shouldn't change because a color got reserialized, but it does:
+
+<SpellingChangesTheMiddle />
+
+One practical note: the `in` clauses shipped across engines between late 2022 (Safari 16.2) and mid-2024 (Firefox 127), and omitting the method in `color-mix()` is newer spec text than the function itself — one more reason to write the space explicitly, always, which is where the engine ends up anyway.
+
+In code, culori's `interpolate()` mirrors the CSS machinery — with one trap: its _own_ default is `'rgb'`, the legacy web, not the new CSS default.
+
+```js
+import { fixupHueLonger, interpolate } from 'culori'
+
+interpolate(['#0000ff', '#ffff00']) // mode omitted: gamma sRGB — the gray middle
+interpolate(['#0000ff', '#ffff00'], 'oklab')(0.5) // the believable midpoint
+interpolate(['#0000ff', '#ffff00'], 'oklch') // polar, shorter arc, like CSS
+interpolate(['#0000ff', '#ffff00'], 'oklch', {
+  h: { fixup: fixupHueLonger }, // in oklch longer hue
+})
+```
+
+Every strip in this chapter is drawn by these calls — nothing traced from a diagram.
+
+## One job per space
+
+The spec's interpolation section opens with its own version of this list, and it matches everything the lab showed. Each space is the _right_ answer for some job:
+
+- **Linear light (`srgb-linear`)** — simulating light: blurs, glows, soft shadows, image blends, anything where photons add. This is chapter 3's checkerboard world, and here linear isn't "too light" — it's the only correct answer.
+- **OKLab** — midpoints for eyes: gradients that pace evenly, mixes that look halfway. The space CSS chose as its modern default, for exactly this reason.
+- **OKLCH** — staying vivid and steering: when graying out is the failure mode and you want to choose the route around the wheel. Pay the gamut toll deliberately.
+- **sRGB** — compatibility: matching the web's accumulated look, and the one guarantee no honest space offers — the route can never leave the screen's gamut. Chapter 3 explains why a quarter century of it was tolerable: gamma values are a _rough_ perceptual scale — rough enough to ship, wrong enough to make mud.
+
+There is no single right space to mix in. The space you pick is the question you're asking: _what would these lights sum to?_ versus _what looks halfway?_ versus _what stays a color the whole way?_ A mix is only wrong when the space answers a different question than the one the design asked.
+
+## The decision this unlocks
+
+Three, stacked from core to output.
+
+**The engine derives every in-between color in OKLab or OKLCH.** Hover and pressed states (chapter 18) are interpolations — a nudge toward black, white, or transparent — and doing that mix in the wrong space is how one button's hover goes muddy while another's goes invisible. This also means the engine computes state colors itself rather than leaving them to a CSS `transition` between hex values, which the legacy carve-out routes through gamma sRGB.
+
+**Emitted gradients always name their space.** A generated theme can't control whether its stops end up in legacy or modern notation in the user's codebase — and you just watched that spelling silently flip the interpolation space. Explicit `in oklab` / `in oklch shorter hue` in everything the engine writes (chapter 20 owns the shipping format).
+
+**Ramp steps are not interpolations.** Chapter 5's lineup already used `interpolate(seed → white)` as a _test instrument_, and even in the right space the result was an even staircase — not a designed scale. Interpolation answers "what lies between A and B" — one question, one route. A ramp answers ten different questions, one per step, each with its own lightness, chroma, and hue targets (chapters 11–13). Naive interpolation is the baseline every ramp philosophy in chapter 11 exists to beat.
+
+## Check yourself
+
+1. A teammate's `linear-gradient(#0000ff, #ffff00)` has a gray dead zone. Walk the arithmetic the browser is doing — what number is the dead zone, exactly, and on which ladder? Name two one-line edits that move the gradient to OKLab, and explain why `color-mix()` with the same two colors never had the problem.
+2. Three jobs: a realistic glow around a light source, a hover state that darkens the same visible amount across all brand hues, and a saturated two-color brand gradient that must not gray out in the middle. Name the interpolation space for each — and the toll the third one risks, in chapter 6's vocabulary.
+3. Two in-gamut brand colors, interpolated in OKLCH, render with a kinked, flattened band mid-gradient on an office monitor but look smoother on a P3 laptop. What happened to the path, and what is each screen doing about it, pixel by pixel?
+
+## Further reading
+
+- [CSS Color 4, §13 Color Interpolation](https://www.w3.org/TR/css-color-4/#interpolation) — the OKLab default and the legacy-sRGB carve-out (§13.1), and the four hue arcs with worked examples (§13.4); this chapter's hue demo is the spec's own example pair.
+- [CSS Color 5, color-mix()](https://drafts.csswg.org/css-color-5/#color-mix) — "If no color interpolation method is specified, assume Oklab," with no legacy exception.
+- [CSS Images 4, §3.5.2 Coloring the Gradient Line](https://drafts.csswg.org/css-images-4/#coloring-gradient-line) — where gradients are wired to Color 4's interpolation rules, premultiplied alpha and all.
+- Björn Ottosson, [A perceptual color space for image processing](https://bottosson.github.io/posts/oklab/) — the "Blending colors" section: white–blue blends compared across spaces; the pictures behind this chapter's lab.
+- [culori API: interpolation](https://culorijs.org/api/) — `interpolate()`, the mode argument, and the `fixupHue*` functions matching CSS's four keywords.

@@ -60,7 +60,7 @@ export const curriculum: Part[] = [
         slug: 'mixing-and-interpolation',
         number: 7,
         title: 'Mixing and interpolation',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'contrast',
