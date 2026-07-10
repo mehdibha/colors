@@ -54,7 +54,7 @@ export const curriculum: Part[] = [
         slug: 'gamut',
         number: 6,
         title: 'Gamut: the edge of the screen',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'mixing-and-interpolation',
