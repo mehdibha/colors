@@ -36,7 +36,7 @@ export const curriculum: Part[] = [
         slug: 'gamma-and-linear-light',
         number: 3,
         title: 'Gamma and the two grays',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'why-hsl-lies',
