@@ -36,7 +36,7 @@ Scope guards (the outline came from a multi-agent gap audit — it's settled; ad
 
 ## Commands
 
-- `pnpm dev` — port 4446 (`fumadocs-mdx` generates `.source/` first; also runs on postinstall).
+- `pnpm dev` — port 5000 (`fumadocs-mdx` generates `.source/` first; also runs on postinstall). macOS AirPlay Receiver squats on 5000; vite falls back to the next free port.
 - `pnpm check` / `check:fix` — oxlint + oxfmt; `pnpm typecheck`; `pnpm build`.
 
 ## Gotchas

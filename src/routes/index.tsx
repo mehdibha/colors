@@ -17,7 +17,7 @@ function Home() {
     <div className="mx-auto w-full max-w-4xl px-6">
       <section className="py-12 sm:py-16">
         <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-          Learn color for design systems.
+          Learn colors for design systems.
         </h1>
         <p className="mt-4 max-w-xl text-base text-balance text-fg-muted">
           The concepts you actually need to build a state-of-the-art color
@@ -38,7 +38,7 @@ function Home() {
               </h2>
               <span className="text-sm text-fg-muted">{part.tagline}</span>
             </div>
-            <ul className="mt-4 border-t">
+            <ul className="mt-4">
               {part.chapters.map((chapter) => (
                 <ChapterRow key={chapter.slug} chapter={chapter} />
               ))}
@@ -54,12 +54,18 @@ function ChapterRow({ chapter }: { chapter: Chapter }) {
   const published = chapter.status === 'published'
 
   return (
-    <li className={published ? 'border-b' : 'border-b border-disabled'}>
+    <li
+      className={
+        published
+          ? 'border-b border-[color-mix(in_srgb,var(--color-bg)_50%,var(--color-border)_50%)]'
+          : 'border-b border-[color-mix(in_srgb,var(--color-bg)_50%,var(--color-border-disabled)_50%)]'
+      }
+    >
       {published ? (
         <Link
           to="/$slug"
           params={{ slug: chapter.slug }}
-          className="flex h-16 items-baseline gap-4"
+          className="flex h-16 items-center gap-4 transition-colors hover:bg-muted/50"
         >
           <span className="w-6 shrink-0 font-mono text-xs text-fg-muted">
             {chapter.number}
@@ -67,7 +73,7 @@ function ChapterRow({ chapter }: { chapter: Chapter }) {
           <span className="font-medium">{chapter.title}</span>
         </Link>
       ) : (
-        <div className="flex h-16 items-baseline gap-4">
+        <div className="flex h-16 items-center gap-4">
           <span className="w-6 shrink-0 font-mono text-xs text-fg-disabled">
             {chapter.number}
           </span>

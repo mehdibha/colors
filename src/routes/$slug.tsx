@@ -111,7 +111,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
     return (
       <div className="relative mx-auto w-full max-w-4xl">
         {tocItems.length > 0 && (
-          <div className="absolute top-13 right-full bottom-0 hidden lg:block">
+          <div className="absolute top-20 right-full bottom-0 hidden lg:block">
             <ChapterDesktopToc
               items={tocItems}
               className="sticky top-24 mr-4"

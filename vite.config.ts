@@ -8,7 +8,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   server: {
-    port: 4446,
+    port: 5000,
   },
   // culori is only reachable through lazily-loaded MDX chapters; without
   // pre-bundling, vite discovers it mid-load and the re-optimize splits the
