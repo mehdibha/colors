@@ -121,7 +121,7 @@ export const curriculum: Part[] = [
         slug: 'dark-mode',
         number: 16,
         title: 'Dark mode is a second design',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'semantic-tokens',

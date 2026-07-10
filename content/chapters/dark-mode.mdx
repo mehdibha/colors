@@ -1,0 +1,108 @@
+---
+title: 'Dark mode is a second design'
+description: 'Flip a light palette upside down and three surface steps render as the same black, the accent glows, and elevation has nowhere to go. Every failure is perceptual and chapter 1 predicted all of them — dark mode is the same twelve jobs hired for the opposite room, and it needs its own curves.'
+part: 2
+question: 'What breaks when dark mode is just the light ramp flipped upside down?'
+---
+
+import { GlowAndTheFix } from '@/components/playgrounds/glow-and-the-fix'
+import { PolarityTwins } from '@/components/playgrounds/polarity-twins'
+import { PureBlackThreeWays } from '@/components/playgrounds/pure-black-three-ways'
+import { DarkLadderSpacing } from '@/components/playgrounds/dark-ladder-spacing'
+import { ElevationFlip } from '@/components/playgrounds/elevation-flip'
+import { StatusColorsGoSoft } from '@/components/playgrounds/status-colors-go-soft'
+import { NaiveInvertVsDesignedDark } from '@/components/playgrounds/naive-invert-vs-designed-dark'
+
+Chapter 1 opened this course with one accent on two surrounds, and the same hex refused to look like the same color. That demo was an IOU, and this chapter pays it. Chapters 10 through 15 built a light-mode system: twelve jobs, an eased lightness skeleton, a chroma arc under the tent, a hue policy, tinted neutrals. Dark mode looks like the cheap part — the ramps exist, surely some arithmetic flips them. It isn't, and the reasons aren't engineering inconveniences: every one is a perception fact from Part 1 showing up with an invoice. Dark mode is the same twelve jobs hired for the opposite room, and the opposite room has different physics.
+
+## Same accent, opposite room
+
+Start with the failure you can see from across the room. Put a saturated accent on a dark surround and it doesn't just sit there — it vibrates. Simultaneous contrast, chapter 1's mechanism: against a dark field, the visual system credits the accent with extra brightness and extra colorfulness. Google's dark-theme material puts it plainly: "More saturated colors tend to visually 'vibrate' against darker backgrounds, making them harder to read."
+
+The shipped fix is not "pick a new color." It's a systematic move — lift the lightness, shed some chroma — and you can read it straight off any mature system's dark palette:
+
+<GlowAndTheFix />
+
+Measure the move. Radix blue's text step goes from `#0d74ce` — oklch(0.556 0.162 252) — in light to `#70b8ff` — oklch(0.764 0.126 250) — in dark: L up 0.21, C down 22%. Material's guidance is the same move stated as policy: in a light theme your primary is "a **500** tone of a color, whereas in a dark theme we recommend a less saturated and more luminous tone, typically **200**, but can be up to **50** depending on the hue." Its baseline does exactly that — primary `#6200EE` (oklch 0.481 0.278) in light becomes `#BB86FC` (oklch 0.720 0.172) in dark.
+
+And note what _didn't_ move: the solid button. Radix ships the identical step 9 hex in both modes for blue, red, yellow, and amber (`#0090ff`, `#e5484d`, `#ffe629`, `#ffc53d`). A solid sits at mid lightness carrying its own background, so it mostly survives the room change; the text-grade accent, judged directly against the surface, doesn't. The fix is per-job, not per-palette — the first hint that no single transform can do this.
+
+## Same ratio, different read
+
+The second perception fact: light-on-dark is not dark-on-light played backwards. Bright text on a dark field scatters slightly in the eye — halation — thinning strokes and fogging edges, and the effect has no mirror image in the other polarity. Chapter 8 gave you the meters for exactly this situation. WCAG 2's ratio is polarity-blind by construction: swap text and background and the number doesn't move. APCA signs its score and responds to polarity:
+
+<PolarityTwins />
+
+`#777777` on white and `#7c7c7c` on `#111113` are WCAG twins — 4.48:1 and 4.52:1. APCA scores them Lc 71.1 and Lc −32.4: less than half the magnitude for the dark pair, and chapter 8 already told you why — WCAG's flare term over-credits dark backgrounds. The practical rule for a dark ramp: a WCAG pass carried over from light mode is a weaker promise than it was, so dark text steps want headroom beyond the ratio — one more reason the dark ladder gets designed, not derived.
+
+## The floor is not black
+
+Now build the room, starting with the floor. The instinctive dark background is `#000000`, and honesty first: pure black is a legitimate, shipped choice — Apple's base dark background in iOS is exactly `#000000` (`systemBackground` in dark mode), and on OLED screens black pixels switch fully off: perfect contrast, real power savings. The trade-offs are also real. Fully-off pixels are slow to wake, so scrolling light content over true black smears on OLED — the practitioner fix is a near-black gray that keeps pixels lit. White text on pure black is the harshest pairing the gamut can produce, 21:1 with maximum halation. And a black floor leaves elevation nowhere to go, which the next two sections make precise.
+
+<PureBlackThreeWays />
+
+Material's answer is `#121212` — the docs are explicit that the default dark background "is _not_ black, but instead a dark grey" — chosen dark enough that white text clears 15.8:1 (it lands at 18.7:1), so that even the lightest elevated surface stays above 4.5:1. Radix's answer is chapter 15 continued: `slateDark1` is `#111113`, oklch(0.179 0.004 286) — a near-black carrying the same blue-violet whisper as its light grays, at three times the chroma light-mode `slate1` holds. The tinted-neutral decision doesn't invert; it gets re-made with a dark-mode budget.
+
+## Dark steps need more room
+
+Here's the failure that kills the flip arithmetic outright. Chapter 3 taught that the value ladder and the light ladder disagree hardest in the shadows; chapter 5 admitted OKLab's dark end is the loosest part of its fit — Ottosson built the alternative lightness estimate Lr precisely because, in a display context with a defined white, standard OKLab L "reduces Oklab's ability to predict lightness." Down near black, equal ΔL steps are not the honest currency they are mid-scale. And the room itself conspires: ambient light reflecting off the screen — the veiling flare WCAG models as that +0.05 — is a constant floor that swamps small dark differences. `slateDark1` emits Y ≈ 0.006; the modeled flare is nearly nine times the surface's own light. Its step 3 emits 2.8× the photons of step 1, and the WCAG ratio between them is 1.19:1.
+
+So a designed dark ladder spends more lightness per distinction exactly where the light ladder spends least:
+
+<DarkLadderSpacing />
+
+Flip the light ladder and you ship the opposite: the mirror of slate's quiet end lands L 0.009, 0.017, 0.044 — three surface steps that all render as `#000000`. Your card, its hover state, and the app background become one color. Not approximately — the same hex.
+
+## Elevation changes direction
+
+In light mode, height is cheap: every surface stays white and a shadow does the work, because a shadow can always darken a light world. On a dark floor the shadow is still being painted — into a background that has no darker left to give. Material's dark theme solves it by inverting the cue: raised surfaces get _lighter_, via "a translucent white overlay" composited over the surface — "the greater the elevation, the more opaque the overlay." The shipped Android implementation is a formula you can run: overlay alpha = (4.5 · ln(1 + dp) + 2)%, which turns `#121212` into `#1e1e1e` at 1dp, `#2e2e2e` at 8dp, `#393939` at 24dp — where white text still clears 11.5:1, the payoff of the 15.8:1 floor rule.
+
+<ElevationFlip />
+
+Apple ships the same inversion as a vocabulary: in Dark Mode, "the system uses two sets of background colors — called base and elevated," with the elevated set brighter so foreground layers advance. Nothing in a light ramp encodes this decision, which is why no flip of a light ramp can contain it: elevation in dark mode is _new information_, born in the dark design.
+
+## Status colors go soft — mostly
+
+Status colors take the accent fix from earlier and raise the stakes, because red and yellow are exactly the hues users must never squint at:
+
+<StatusColorsGoSoft />
+
+Radix red's text step desaturates and lifts — `#ce2c31` (L 0.557, C 0.197) becomes `#ff9592` (L 0.780, C 0.128), and the carried-over light value would have sat at 3.46:1 on the dark background where the shipped one clears 8.56:1. Material's baseline makes the recipe literal: the dark error color `#CF6679` is the light error `#B00020` under a 40% white overlay — lighten and desaturate as a single compositing step.
+
+Then yellow breaks the rule, and it's worth savoring why. Light-mode yellow _text_ was always the compromise: chapter 13 showed there's no dark vivid yellow, so Radix ships `#9e6c00` — a brown — as yellow 11 in light mode. The dark room removes the constraint: a text color there needs to be _light_, and light vivid yellow exists in abundance. So `yellowDark11` is `#f5e147` — chroma **up** from 0.119 to 0.166, thirteen-to-one contrast, and finally actually yellow. The hue moved as much as the chroma did: light's compromise sits at h 76.8 — chapter 13's bend toward brown — and the dark value re-aims to h 101.7, back on the yellow ridge. Dark mode isn't uniformly a desaturation pass; it's a re-negotiation with the gamut tent, per hue, per job. A formula that "reduces C by 20% for dark" would un-fix yellow while fixing red.
+
+## The lab
+
+Three columns, same UI: the light design, the flip you were tempted to write, and the dark design Radix actually shipped. Two naive strategies are on offer — mirror the ramp's lightnesses through 0.5, or reverse the twelve steps — and they fail differently, which is itself the lesson. The lens buttons annotate one axis at a time.
+
+<NaiveInvertVsDesignedDark />
+
+Worth doing, in order:
+
+- **Surfaces lens, mirror strategy.** Read the middle column's numbers: bg→card ΔL 0.000. The light ladder's whispers, mirrored into the region where displays and eyes resolve nothing, collapse to literal black-on-black. The designed column spends 0.035 per step.
+- **Switch to reverse.** Now the quiet end inherits the text end's cliffs — the card leaps ΔL 0.261 off the background, and "muted" text is one whisper away from primary text. Reversal doesn't crush the ladder; it mis-allocates its easing. Chapter 11 said resolution goes where the jobs cluster — the jobs moved, the easing didn't.
+- **Accent lens, both strategies.** Both naive columns keep light's chroma and it glows against the dark card; the designed column's link shed a fifth of its chroma and gained 0.2 L. Check the Lc numbers against the WCAG ones.
+- **Text lens.** The ratios look reassuringly similar across all three columns — and the signed Lc scores tell you the columns do not read the same. The meter you choose decides whether you can even see this failure.
+- **Elevation lens.** The one axis where the naive columns don't just degrade — they have no answer at all. ΔL 0 plus an invisible shadow is not a smaller elevation; it's none.
+
+## The decision this unlocks
+
+dotUI's engine currently has no dark design — and it says so in its own test suite: the default OKLCH producer is documented "mode-agnostic," and an engine test asserts outright that "light and dark ramps are identical." Dark mode today is the same fixed lightness anchors with a background swapped from L 0.98 to L 0.16 underneath. Everything this chapter demonstrated — the glow, the collapsed quiet end, the missing elevation answer, yellow — is currently unhandled by construction. The demoted contrast producer at least re-solves against the mode background, and the Material producer flips a tone list; the default does neither.
+
+The rewrite decision, stated plainly: **dark mode is a second generation pass with its own curve parameters, not a transform of light's output.** A dark run owns its lightness skeleton (wider steps at the dark quiet end, its own text-end cliffs), its own chroma budgets per job (text accents shed chroma, yellows may gain it), its own hue curve (chapter 13's yellow-to-brown bend gets undone in the dark, where a light vivid yellow exists), its own neutral tint budget (Radix carries 3× the light tint at the floor), and an elevation policy light mode never needed. The honest fork inside that decision mirrors chapter 11's philosophies: Radix hand-designs a second scale per hue; Material generates one wide tonal palette and re-picks slots asymmetrically per mode — tone 40 becomes tone 80, never tone 60, because the picks are designed, not mirrored. Either architecture is defensible. What's not defensible is the arithmetic flip — and the current engine's answer, which is no dark design at all.
+
+Left open, on purpose: naming the light/dark pairs so components consume one token (`bg`, `bg-elevated`) is chapter 17; alpha-based overlays and the full status-state matrix are chapter 18; the Radix and Material deep dives are chapters 21 and 23.
+
+## Check yourself
+
+1. A teammate proposes dark mode as `L → 1 − L` on every token, "since OKLCH is perceptually uniform." Name three distinct failures — one at the surface steps, one on the accent, one about elevation — and the perception fact behind each.
+2. Radix ships the same step 9 hex in light and dark for blue, but different step 11s. Why does the solid survive the room change while the text color can't?
+3. In light mode, yellow's text step is a brown; in dark mode it's a vivid yellow with more chroma than the light version. What constraint flipped, and why should this kill any "desaturate everything for dark" rule in your engine?
+
+## Further reading
+
+- [Material Design — Dark theme](https://m2.material.io/design/color/dark-theme.html) — the `#121212` surface, the 15.8:1 rule, elevation overlays, desaturated tone guidance, and the error-color recipe, in one spec page.
+- [Apple HIG — Dark Mode](https://developer.apple.com/design/human-interface-guidelines/dark-mode) — base vs elevated background sets, and a pure-black floor shipped at OS scale.
+- [`radix-ui/colors` — `dark.ts`](https://github.com/radix-ui/colors/blob/main/src/dark.ts) — every dark number in this chapter recomputes from these hexes; diff any scale against `light.ts` and the whole chapter is in the diff.
+- [`ElevationOverlayProvider.java`](https://github.com/material-components/material-components-android/blob/master/lib/java/com/google/android/material/elevation/ElevationOverlayProvider.java) — the shipped overlay formula: alpha = (4.5 · ln(1 + dp) + 2)%.
+- [Björn Ottosson — OKHSV and OKHSL](https://bottosson.github.io/posts/colorpicker/) — the Lr lightness estimate, and why OKLab's dark end needs one in display contexts.
