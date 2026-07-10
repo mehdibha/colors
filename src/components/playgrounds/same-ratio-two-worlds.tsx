@@ -18,10 +18,10 @@ export function SameRatioTwoWorlds() {
       caption={
         <>
           To WCAG 2 these are twins — 4.54:1 and 4.52:1, both comfortably
-          "passes AA body text." Read the two paragraphs. APCA scores what your
-          eye reports: Lc 71.6 against Lc −35.3 — the dark-mode pair delivers
-          half the contrast, and by APCA's guidance shouldn't carry body text at
-          all.
+          "passes AA body text." Read the two paragraphs. APCA scores much
+          closer to what your eye just reported: Lc 71.6 against Lc −35.3 — the
+          dark-mode pair delivers half the contrast, and by APCA's guidance
+          shouldn't carry body text at all.
         </>
       }
     >

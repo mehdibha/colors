@@ -26,8 +26,9 @@ export function SamePairFiveFonts() {
           experiences. WCAG's model of typography is a single cliff: below 18pt
           (14pt bold), 4.5:1; above it, 3:1. APCA prices every row separately
           through a size-and-weight lookup table: Lc 71.6 comfortably buys the
-          bottom rows and doesn't quite cover 18px body text, which asks for Lc
-          75.
+          bottom rows, doesn't quite cover 18px body text (which asks for Lc
+          75), and the two smallest rows fall shortest of all — they'd demand
+          more contrast than this pair has.
         </>
       }
     >

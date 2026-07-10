@@ -23,7 +23,11 @@ const BUTTONS = [
   lc: apcaLc(b.fg, ORANGE),
 }))
 
-const strongest = Math.max(...BUTTONS.map((b) => Math.abs(b.lc)))
+const strongestIndex = BUTTONS.reduce(
+  (best, b, i) =>
+    Math.abs(b.lc) > Math.abs(BUTTONS[best]?.lc ?? 0) ? i : best,
+  0,
+)
 
 export function OrangeButtonVerdict() {
   return (
@@ -39,7 +43,7 @@ export function OrangeButtonVerdict() {
       }
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        {BUTTONS.map((b) => (
+        {BUTTONS.map((b, i) => (
           <div key={b.fg} className="flex flex-col items-center gap-3">
             <span
               className="rounded-lg px-5 py-2.5 text-sm font-medium"
@@ -53,9 +57,7 @@ export function OrangeButtonVerdict() {
               </span>
               <span>
                 APCA Lc {b.lc.toFixed(1)} —{' '}
-                {Math.abs(b.lc) === strongest
-                  ? 'the stronger pair'
-                  : 'the weaker pair'}
+                {i === strongestIndex ? 'the stronger pair' : 'the weaker pair'}
               </span>
             </div>
           </div>

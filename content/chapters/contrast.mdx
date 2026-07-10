@@ -33,7 +33,7 @@ The 0.05 stands in for stray light bouncing off the glass — and it keeps black
 
 <RatioAnatomy />
 
-Now run the orange button through it. `#ff6600` has Y = 0.308. Black brings Y = 0: the ratio is 0.358 / 0.05 = **7.15** — passes AAA. White brings Y = 1: the ratio is 1.05 / 0.358 = **2.94** — fails even the large-text bar. Look at where black's 7.15 came from, though: almost all of it is the denominator bottoming out at the flare constant. Against black, _any_ background at Y ≥ 0.30 scores 7:1 or better automatically. The formula isn't scoring how well black reads on orange — it's scoring how little light black emits.
+Now run the orange button through it. `#ff6600` has Y = 0.3075 — call it 0.308. Black brings Y = 0: the ratio is 0.3575 / 0.05 = **7.15** — passes AAA. White brings Y = 1: the ratio is 1.05 / 0.3575 = **2.94** — fails even the large-text bar. Look at where black's 7.15 came from, though: almost all of it is the denominator bottoming out at the flare constant. Against black, _any_ background at Y ≥ 0.30 scores 7:1 or better automatically. The formula isn't scoring how well black reads on orange — it's scoring how little light black emits.
 
 There's a general version of this worth deriving once. Solve for the background luminance where black text and white text tie, and you get Y ≈ 0.18 — the middle gray near `#767676`. **For any background brighter than that, the formula's answer is always black text.** Every orange, every vivid coral, most brand blues and greens at button strength — the entire mid-tone range where accent colors live — WCAG votes black, categorically, before your eye gets a say. (And a precision nerd-snipe: the internet's favorite "just passes" gray, `#777`, doesn't — it's 4.48:1, a fail by two hundredths. The gray that passes by a hair is `#767676`.)
 
@@ -53,7 +53,7 @@ Be fair to the standard: in its home territory — dark text on light background
 
 APCA — the Accessible Perceptual Contrast Algorithm, from Andrew Somers' SAPC research — starts from nearly the same place: the same three channel weights, decoding with a plain 2.4 exponent instead of the piecewise curve. What it does next is what matters, and you don't need the formula to understand it — you need what the formula _responds to_:
 
-- **Polarity.** APCA applies different response curves to the text color and the background color — and different ones again depending on which is lighter. Swap text and background and the score genuinely changes; the sign records the direction (negative Lc means light text on dark). The dark-mode failure you just saw stops being invisible: WCAG scored those twins 4.54 and 4.52; APCA scores them Lc 71.6 and −35.3. This is chapter 1's lesson — arrangement changes perception — finally built into a measurement.
+- **Polarity.** APCA applies different response curves to the text color and the background color — and different ones again depending on which is lighter. Swap text and background and the score genuinely changes; the sign records the direction (negative Lc means light text on dark). The dark-mode failure you just saw stops being invisible: WCAG scored those twins 4.54 and 4.52; APCA scores them Lc 71.6 and −35.3. This is chapter 1's lesson — perception depends on context, not just the number — finally built into a measurement.
 - **The dark end.** Instead of a flare constant propping up a division, APCA soft-clamps luminance near black and works on differences of compressed values, not ratios of linear ones. Black stops being a free 21:1 jackpot — which is exactly where the orange button verdict flipped.
 - **Spatial frequency.** Thin, small glyphs are genuinely harder to read than bold, large ones at identical colors — contrast lives in stroke widths, not just color pairs. The Lc score itself is computed from colors only; APCA's conformance model then couples it to a font size and weight lookup. The published guidance: **Lc 90** preferred for body text, **Lc 75** the body-text minimum (18px regular), **Lc 60** for content text no smaller than 24px, **Lc 45** for large headlines (36px, or 24px bold), **Lc 30** the absolute floor for any text, **Lc 15** for non-text elements. One score, sliding requirements — where WCAG 2 has one cliff at 4.5 and a single coarse "large text" discount:
 
@@ -63,7 +63,11 @@ The scale runs from 0 to about 106 (dark-on-light) and 0 to about −108 (light-
 
 <DualMeterLab />
 
-Two hunts worth running. Load **Orange · black**, then **Orange · white**: WCAG ranks black the runaway winner; APCA reverses the ranking, and the black text that sailed through WCAG doesn't clear APCA's body-text bar. Then load **Dark muted** — a pass at 4.52:1, and APCA's Lc −35.3 calls it what your eye sees: below the floor for body text. And note what the orange fight was actually telling you: when the meters disagree, the pair is fragile. The professional answer was never to pick a referee — it was to fix the orange. Darken it two steps to `#c2410c` and white clears _both_ meters (5.18:1, Lc −79.9). A design that needs a favorable referee is the design to change.
+What to hunt for:
+
+- **Orange · black, then Orange · white** — WCAG ranks black the runaway winner; APCA reverses the ranking, and the black text that sailed through WCAG doesn't clear APCA's body-text bar.
+- **Dark muted** — a pass at 4.52:1, and APCA's Lc −35.3 models what your eye just reported two demos ago: below the floor for body text.
+- **Orange, fixed** — the resolution. When the meters disagree, the pair is fragile, and the professional answer was never to pick a referee — it was to fix the orange. This preset darkens it two steps to `#c2410c`, and white clears _both_ meters (5.18:1, Lc −79.9). A design that needs a favorable referee is the design to change.
 
 ## Rankings, not just thresholds
 
@@ -111,7 +115,7 @@ One door stays deliberately closed: everything here assumed typical vision and d
 
 ## Check yourself
 
-1. Walk the orange button through WCAG 2 by hand: Y is 0.308 for the orange, 0 for black, 1 for white. Where does black's 7.15 actually come from — and why does APCA, which soft-clamps the dark end instead of dividing by a propped-up denominator, rank the two buttons the other way?
+1. Walk the orange button through WCAG 2 by hand: Y is 0.3075 for the orange, 0 for black, 1 for white. Where does black's 7.15 actually come from — and why does APCA, which soft-clamps the dark end instead of dividing by a propped-up denominator, rank the two buttons the other way?
 2. A dark-mode theme's muted text passes 4.5:1 in the audit and users still report it's unreadable. Name the two constructions in WCAG 2's formula that let this pair through, and what APCA responds to that catches it.
 3. A teammate proposes switching CI's contrast checks from WCAG 2 to APCA "since WCAG 3 is around the corner." What's right in that sentence, what's wrong, and what should the pipeline do with each score?
 

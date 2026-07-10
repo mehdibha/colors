@@ -32,6 +32,7 @@ const PRESETS = [
   { id: 'dark-muted', label: 'Dark muted', fg: '#858585', bg: '#1e1e1e' },
   { id: 'light-muted', label: 'Light muted', fg: '#767676', bg: '#ffffff' },
   { id: 'agree', label: 'Both agree', fg: '#475569', bg: '#f8fafc' },
+  { id: 'orange-fixed', label: 'Orange, fixed', fg: '#ffffff', bg: '#c2410c' },
 ] as const
 
 const wcagVerdict = (r: number) =>
@@ -84,6 +85,7 @@ export function DualMeterLab() {
   const swap = () => {
     setFg(lchOf(bg))
     setBg(fgHex)
+    setPresetId('')
   }
 
   return (
@@ -96,12 +98,14 @@ export function DualMeterLab() {
           <span className="shrink-0 text-xs text-fg-muted">Pair</span>
           <ToggleButtonGroup
             selectionMode="single"
-            disallowEmptySelection
-            selectedKeys={[presetId]}
-            onSelectionChange={(keys) => selectPreset([...keys][0] as string)}
+            selectedKeys={presetId ? [presetId] : []}
+            onSelectionChange={(keys) => {
+              const id = [...keys][0]
+              if (typeof id === 'string') selectPreset(id)
+            }}
             size="sm"
             aria-label="Preset pair"
-            className="flex-wrap"
+            className="max-w-full overflow-x-auto"
           >
             {PRESETS.map((p) => (
               <ToggleButton key={p.id} id={p.id}>
@@ -159,8 +163,6 @@ export function DualMeterLab() {
               ticks={WCAG_TICKS}
               maxLabel="21"
               verdict={wcagVerdict(ratio)}
-              fg={fgHex}
-              bg={bg}
             />
             <ScoreMeter
               label="APCA"
@@ -169,8 +171,6 @@ export function DualMeterLab() {
               ticks={APCA_TICKS}
               maxLabel="108"
               verdict={apcaVerdict(lc)}
-              fg={fgHex}
-              bg={bg}
             />
           </div>
         </div>
@@ -218,8 +218,6 @@ function ScoreMeter({
   ticks,
   maxLabel,
   verdict,
-  fg,
-  bg,
 }: {
   label: string
   display: string
@@ -227,11 +225,9 @@ function ScoreMeter({
   ticks: { at: number; label: string }[]
   maxLabel: string
   verdict: string
-  fg: string
-  bg: string
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1" aria-live="polite">
       <div className="flex items-baseline justify-between">
         <span className="font-mono text-[0.7rem] tracking-wider text-fg-muted uppercase">
           {label}
@@ -240,16 +236,10 @@ function ScoreMeter({
           {display}
         </span>
       </div>
-      <div
-        className="relative h-3 overflow-hidden rounded-full border"
-        style={{ backgroundColor: bg }}
-      >
+      <div className="relative h-3 overflow-hidden rounded-full border">
         <div
-          className="absolute inset-y-0 left-0"
-          style={{
-            width: `${Math.min(at, 1) * 100}%`,
-            backgroundColor: fg,
-          }}
+          className="absolute inset-y-0 left-0 bg-fg/70"
+          style={{ width: `${Math.min(at, 1) * 100}%` }}
         />
         {ticks.map((t) => (
           <div

@@ -35,9 +35,8 @@ export function RatioAnatomy() {
           (chapter 3's curve), weight the channels (chapter 4's 21/72/7), add
           0.05 to both luminances, divide lighter by darker. At pure black the
           ratio caps at 21:1 — the flare term won't let the denominator reach
-          zero. And because the formula sorts the pair into lighter and darker
-          before dividing, both cards score identically, always: the ratio
-          cannot see which color is the text.
+          zero. Note the formula's first move: it sorts the pair into lighter
+          and darker before dividing. Hold that thought.
         </>
       }
     >
