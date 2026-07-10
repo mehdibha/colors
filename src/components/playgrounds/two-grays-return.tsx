@@ -27,8 +27,8 @@ export function TwoGraysReturn() {
           The endpoints never move; only the ladder the average runs on does.
           The value ladder lands on{' '}
           <code className="font-mono text-[0.8rem]">#808080</code> — chapter 3's
-          128 gray, at a dead L* 53: the gray hole in the middle of every naive
-          blue-to-yellow gradient. The light ladder lands on{' '}
+          128 gray, L* 53 but drained of all color: the gray hole in the middle
+          of every naive blue-to-yellow gradient. The light ladder lands on{' '}
           <code className="font-mono text-[0.8rem]">#bcbcbc</code> — chapter 3's
           half-light gray: the physically honest mix (squint at a fine
           blue-and-yellow checkerboard and this is what fuses), which reads

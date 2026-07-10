@@ -34,7 +34,14 @@ Stop taking midpoints on faith — watch whole paths, with instruments.
 
 <InterpolationLab />
 
-What to hunt for, preset by preset. **Blue → Yellow:** the sRGB row's hue strip goes literally gray at the center — the dead zone isn't dim color, it's _no_ color. OKLab's twins are metronome-even, but its own chroma sags to 0.056 mid-path: OKLab's a and b are opponent axes, distant hues sit on opposite sides of gray, and a straight chord between them cuts inside the wheel. OKLCH holds the vividness — and collects tick marks, because the vivid road asks for colors your screen doesn't have. **Red → Green:** the mud — watch the sRGB twins dip _darker than both ends_. **Black → White:** no hue to steer, so it's a pure pacing test, and it's chapter 3 verbatim: linear's "midpoint" is the gray that looks three-quarters of the way to white, while sRGB's 128 and OKLab's answer bracket the ~119 most people picked in the midpoint hunt. **Two blues:** the control group — every row except linear agrees to within ΔEOK 0.008, well under chapter 6's just-noticeable 0.02. **Interpolation space matters in proportion to the distance between endpoints**: between neighbors, any perceptual-ish space is fine; between strangers, the space is the design.
+What to hunt for, preset by preset:
+
+- **Blue → Yellow** — the sRGB row's hue strip goes literally gray at the center: the dead zone isn't dim color, it's _no_ color. OKLab's twins are metronome-even, but its own chroma sags — C 0.077 at the midpoint, bottoming out at 0.056 just past it — because OKLab's a and b are opponent axes, distant hues sit on opposite sides of gray, and a straight chord between them cuts inside the wheel. OKLCH holds the vividness — and collects tick marks, because the vivid road asks for colors your screen doesn't have.
+- **Red → Green** — the mud. Watch the sRGB twins dip _darker than both ends_.
+- **Black → White** — no hue to steer, so it's a pure pacing test, and it's chapter 3 verbatim: linear's "midpoint" is the gray that looks three-quarters of the way to white, while sRGB's 128 and OKLab's answer bracket the ~119 most people picked in the midpoint hunt.
+- **Two blues** — the control group. Every row except linear agrees to within ΔEOK 0.008, well under chapter 6's just-noticeable 0.02.
+
+**Interpolation space matters in proportion to the distance between endpoints**: between neighbors, any perceptual-ish space is fine; between strangers, the space is the design.
 
 ## Polar roads: picking the arc
 
@@ -42,13 +49,13 @@ OKLCH's hue is an angle, and between two angles there are always two arcs. Somet
 
 <FourWaysAroundTheWheel />
 
-`shorter` — the default everywhere — takes the smaller arc. `longer` takes the scenic route. `increasing` and `decreasing` don't compare arc lengths at all; they fix a direction of travel. They exist for animation: if an endpoint's hue animates across the 180° mark, `shorter` snaps to the other arc mid-animation, while a fixed direction never flips. In the lab above, Blue → Yellow's `shorter` road runs down through teal and green; `longer` climbs through magenta and fire — the halfway color is a hot pink. Same two endpoints, whole different countries in between.
+`shorter` — the default everywhere — takes the smaller arc. `longer` takes the scenic route. `increasing` and `decreasing` don't compare arc lengths at all; they fix a direction of travel. They exist for animation: if an endpoint's hue animates across the 180° mark, `shorter` snaps to the other arc mid-animation, while a fixed direction never flips. (The demo uses the spec's own red→yellow example pair; the blue→yellow arcs live back in the lab — flip its hue-path control and watch `shorter` run down through teal and green while `longer` climbs through magenta and fire, a hot pink at halfway.) Same two endpoints, whole different countries in between.
 
 Here's the polar trade in one sentence: rectangular OKLab can never overshoot vividness but sags toward gray between distant hues; polar OKLCH holds vividness but must choose a route — and vivid routes have tolls.
 
 ## The door, revisited
 
-The toll is chapter 6's door. Both `#0000ff` and `#ffff00` are plain sRGB colors — in gamut on every screen ever made. The OKLCH path between them holds interpolated chroma through hues where sRGB's tent is low: near hue 229° it asks for C 0.29 where the ceiling is 0.112 — two and a half times the chroma that exists. The ticks in the lab already counted it: 73% of the path is off the map. This isn't an OKLCH quirk, it's geometry: the sRGB gamut is only convex in its own coordinates, so **the only space whose straight lines can never leave sRGB is sRGB itself** — the mud-maker's one honest virtue. Even OKLab's sagging chord pokes outside near the saturated blue end.
+The toll is chapter 6's door. Both `#0000ff` and `#ffff00` are plain sRGB colors — in gamut on every screen ever made. The OKLCH path between them holds interpolated chroma through hues where sRGB's tent is low: near hue 229° it asks for C 0.29 where the ceiling is 0.112 — two and a half times the chroma that exists. The ticks in the lab already counted it: 73% of the path is off the map. This isn't an OKLCH quirk, it's geometry: the sRGB gamut is a convex cube only in sRGB's own coordinates — gamma or linear — so **straight lines drawn there can never leave it**. No perceptual space makes that promise (check the lab: the two sRGB-coordinate rows never collect a single tick). Even OKLab's sagging chord pokes outside near the saturated blue end.
 
 <GamutDoorGradient />
 
@@ -85,7 +92,7 @@ interpolate(['#0000ff', '#ffff00'], 'oklch', {
 })
 ```
 
-Every strip in this chapter is drawn by these calls — nothing traced from a diagram.
+Every computed strip in this chapter is drawn by these calls — the rest are your browser's own gradients. Nothing is traced from a diagram.
 
 ## One job per space
 
@@ -94,7 +101,7 @@ The spec's interpolation section opens with its own version of this list, and it
 - **Linear light (`srgb-linear`)** — simulating light: blurs, glows, soft shadows, image blends, anything where photons add. This is chapter 3's checkerboard world, and here linear isn't "too light" — it's the only correct answer.
 - **OKLab** — midpoints for eyes: gradients that pace evenly, mixes that look halfway. The space CSS chose as its modern default, for exactly this reason.
 - **OKLCH** — staying vivid and steering: when graying out is the failure mode and you want to choose the route around the wheel. Pay the gamut toll deliberately.
-- **sRGB** — compatibility: matching the web's accumulated look, and the one guarantee no honest space offers — the route can never leave the screen's gamut. Chapter 3 explains why a quarter century of it was tolerable: gamma values are a _rough_ perceptual scale — rough enough to ship, wrong enough to make mud.
+- **sRGB** — compatibility: matching the web's accumulated look, plus a guarantee neither perceptual space offers — the route can never leave the screen's gamut (linear sRGB shares that guarantee; only gamma sRGB also matches legacy content). Chapter 3 explains why a quarter century of it was tolerable: gamma values are a _rough_ perceptual scale — rough enough to ship, wrong enough to make mud.
 
 There is no single right space to mix in. The space you pick is the question you're asking: _what would these lights sum to?_ versus _what looks halfway?_ versus _what stays a color the whole way?_ A mix is only wrong when the space answers a different question than the one the design asked.
 

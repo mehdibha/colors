@@ -217,10 +217,7 @@ export function InterpolationLab() {
           lightness and chroma (does the walk stay on course? it turns gray
           where the path is literally hueless). The dark ticks are new: they
           mark where a path asked for colors outside sRGB — your screen is
-          clipping those pixels, which is the next section's subject. Black →
-          White has no hue to steer, so it's a pure pacing test; Two blues is
-          the control group — nearby endpoints, and every space except linear
-          agrees to within less than chapter 6's just-noticeable ΔEOK.
+          clipping those pixels, which is the next section's subject.
         </p>
       </div>
     </Playground>
