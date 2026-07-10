@@ -48,7 +48,7 @@ export const curriculum: Part[] = [
         slug: 'perceptual-color-spaces',
         number: 5,
         title: 'Perceptual spaces: from Lab to OKLCH',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'gamut',
