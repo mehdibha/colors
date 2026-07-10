@@ -72,7 +72,7 @@ export const curriculum: Part[] = [
         slug: 'seeing-differently',
         number: 9,
         title: 'Seeing differently: CVD and user preferences',
-        status: 'planned',
+        status: 'published',
       },
     ],
   },

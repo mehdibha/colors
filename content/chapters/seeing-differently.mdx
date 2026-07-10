@@ -1,0 +1,129 @@
+---
+title: 'Seeing differently: CVD and user preferences'
+description: One in twelve of your male users can't tell your red from your green, and some of the rest have told their OS to throw your palette away. Which distinctions survive when the eyes and the settings aren't yours — and how to verify it with culori.
+part: 1
+question: Do your colors still mean different things to eyes unlike yours?
+---
+
+import { ConfusionLineWheel } from '@/components/playgrounds/confusion-line-wheel'
+import { CvdSimulator } from '@/components/playgrounds/cvd-simulator'
+import { ProtanDarkensRed } from '@/components/playgrounds/protan-darkens-red'
+import { StatusPairCollapse } from '@/components/playgrounds/status-pair-collapse'
+import { ContrastPreferenceVariants } from '@/components/playgrounds/contrast-preference-variants'
+import { ForcedColorsMock } from '@/components/playgrounds/forced-colors-mock'
+
+Chapter 8 ended on an unpaid debt: every contrast number in it assumed typical vision and default settings, and closed by admitting "contrast for _whom_ is a bigger question than either meter answers." This chapter is _whom_ — and since it closes the Foundations, it also changes how you hold everything the first eight taught.
+
+Here's the reframe. Every color you've placed so far, you placed for one viewer: you, at your desk, with your eyes and your OS defaults. But a color value was never a color (chapter 1) — it's an instruction, and the instruction is executed by whoever's actually looking. Some of them have different cones. Some have told their operating system to raise contrast, or to replace your palette wholesale. **Your palette is a proposal. Other eyes and other settings get to renegotiate it — and the design has to survive the negotiation.**
+
+Start with the number that should end any argument. Red-green color-vision deficiency affects about **1 in 12 men (8%)** and **1 in 200 women (0.5%)** of Northern European descent — pooled global estimates for men run nearer 4–5%, still far larger than the share of users on any browser you already test against. If your product has a red "delete" and a green "confirm" distinguished by color alone, a meaningful fraction of your users is guessing.
+
+## What's actually missing
+
+Normal color vision runs on three cone types, tuned to long, medium, and short wavelengths. Color is the brain comparing their outputs; take one comparison away and a whole dimension of color collapses.
+
+- **Red-green deficiency** is by far the most common: the long-wavelength cone (**protan**) or medium-wavelength cone (**deutan**) is shifted (the "-anomaly" forms — reduced discrimination) or missing entirely (the "-anopia" forms). Deuteranomaly alone accounts for most of the 8%. Both live on the X chromosome, which is why men, with their single X, are hit an order of magnitude more often than women.
+- **Tritan** — the short-wavelength cone, the blue-yellow axis — is rare (well under 0.1%), often acquired rather than inherited, and not sex-linked.
+
+The practical shape of it: red-green vision is essentially _one channel_, and protan and deutan knock it out. Lose it and every hue that depended on it becomes a synonym for its neighbors. You can watch the collapse directly — twelve hues, equally spaced, equal lightness and chroma, nothing separating them but angle:
+
+<ConfusionLineWheel />
+
+The warm arc folds into a single band while blue and purple stay distinct. Colorimetry has a name for that band — a **confusion line**, the set of colors a dichromat can't tell apart — but the takeaway needs no jargon: **red-green deficiency erases the red-green axis, and leaves the blue-yellow one standing.**
+
+## Simulation as verification
+
+You don't have to imagine any of this — you can compute it. `culori` ships three CVD filters, and every simulated swatch in this chapter runs through them:
+
+```js
+import {
+  filterDeficiencyProt,
+  filterDeficiencyDeuter,
+  filterDeficiencyTrit,
+} from 'culori'
+
+const deutan = filterDeficiencyDeuter(1) // severity 1 = full dichromacy
+deutan('#dc2626') // → a muddy olive: the red a deuteranope sees
+```
+
+Three honesty notes, because a learning site owes you the fine print. First, culori's implementation is the **Machado, Oliveira & Fernandes (2009)** model — precomputed physiological matrices — not the Brettel/Viénot method you'll see named in other tools; the qualitative result is the same, the exact pixels differ. Second, the `severity` argument runs 0 to 1, but culori quantizes it to eleven steps of 0.1, so treat the slider as coarse. Third, culori applies the matrix to gamma-encoded sRGB rather than the linear light the model was fit against — so read these as a faithful _illustration_ of the collapse, not a calibrated clinical device. For the one question a design system asks — _do these colors stay distinct?_ — it's more than enough.
+
+Now point it at a real interface. Below is a brand ramp, a set of status colors, and a categorical chart — the three places color does work in a product. Switch the deficiency and watch which survive:
+
+<CvdSimulator />
+
+The readout is the point. It measures each pair's separation two ways you already own: **ΔEok**, chapter 6's perceptual distance (0.02 is one just-noticeable difference), and **ΔL\***, the lightness gap off every meter since chapter 3. The brand ramp never flinches — it's one hue stepped in lightness, so there's no red-green information to lose. The status pills and the chart lean on hue, and they pay: under deutan the warm colors slide together while the readout's ΔEok collapses. What holds on does so on exactly two things CVD can't take — a lightness difference, or the intact blue-yellow axis.
+
+## The lightness catch
+
+"Lightness survives, so separate by lightness" is the right instinct, with one asterisk worth getting exactly right.
+
+Deutan vision keeps luminance roughly intact: a deuteranope's sense of _how light_ a color is barely moves, so lightness differences you design survive almost unchanged. Protan vision does not. Protanopes are missing the long-wavelength cones, and red light is long-wavelength — so for them, **reds lose luminance and darken**, sometimes drastically. Same red, two deficiencies:
+
+<ProtanDarkensRed />
+
+The consequence is concrete: a red you tuned to a comfortable contrast ratio can slip below it for a protanope, because the red they see is darker than the one you measured. So a lightness difference is far more robust than a hue difference under CVD — but not perfectly invariant, and it's weakest exactly where you'd forget: at the red end, under protan. Verify reds against the protan simulator specifically, rather than trusting the lightness you designed to be the lightness they get.
+
+## The rule that falls out of all of it
+
+Every demo above is one instruction: **never encode meaning in hue alone.** Pair every hue distinction with a second, redundant channel — a lightness difference, an icon, a shape, a text label, a pattern. Any one of them rescues the meaning; hue by itself is the single point of failure. It's the exact content of WCAG 2's Success Criterion 1.4.1, _Use of Color_: color must never be the _only_ visual means of conveying information.
+
+Here's the whole rule in one pair of rows — the traffic-light status half the web ships, and the version that survives:
+
+<StatusPairCollapse />
+
+The top row is a red and a green at the same lightness: correct-looking to you, one indistinguishable olive to a deuteranope. The bottom row carries the same message with a lightness gap, an icon, and a word — grayscale it, simulate any deficiency, and it still reads. This is not a concession to a minority; it's the same robustness that lets a status survive a grayscale printout, a dying projector, or a photo taken in the sun.
+
+And because the simulation is just a function, the rule can be enforced by a machine: run every categorical palette and status set through all three filters at severity 1, compute the minimum ΔEok between any two swatches, and fail the build if it drops below a just-noticeable difference under any deficiency. CVD-safety becomes a CI check, exactly like a contrast check.
+
+## When the user overrides your palette
+
+CVD changes how colors are _seen_. A second population changes what colors are _shown_ — deliberate OS settings your CSS can read, and a design system has to answer for.
+
+**`prefers-contrast`** reports a user asking for `more` or `less` contrast (plus `custom`, which matches when the user has set a specific palette — see forced colors below). It's a request to adjust, not replace: the faint border and muted text a design uses for calm get swapped for stronger values on the same slots.
+
+<ContrastPreferenceVariants />
+
+Note what did _not_ change: the layout, the copy, the component. Only the token values did. That's the shape of a good answer to `prefers-contrast` — a variant of the palette, not a redesign — and it's why the engine wants contrast as an axis, not a hardcoded set of values.
+
+**`forced-colors`** is the aggressive one. When it's `active` — Windows High Contrast mode is the canonical trigger — the browser **throws your palette away** and repaints from a small set of user-chosen `SystemColor` keywords: `Canvas`, `CanvasText`, `LinkText`, `ButtonText`, `ButtonFace`. `color`, `background-color`, and `border-color` are treated as if you never set them; `box-shadow` is forced to `none`; non-URL background images are dropped. Your gradients, your shadows, your color-coded status dot — gone.
+
+Because forced-colors mode is set in the OS, no web page can turn it on — so this is a mock, and it says so:
+
+<ForcedColorsMock />
+
+Two lessons. First: anything encoded _only_ in a gradient, a shadow, or a background tint disappears — a border you treated as decoration may be the only thing left drawing an element's edge. Second: the fix is usually to get out of the way. Let the system colors win; reach for `forced-color-adjust: none` only on the rare element whose meaning genuinely _is_ its color (a color swatch, a chart key), and otherwise trust the user's palette over yours.
+
+Two more, briefly. `prefers-reduced-transparency: reduce` asks you to make translucent surfaces opaque — relevant the moment a system offers frosted menus (support is still limited; treat it as progressive enhancement). And `prefers-color-scheme` — light versus dark — is the biggest setting of all, which is why it isn't crammed in here: dark mode is a second design, and chapter 16 is about nothing else.
+
+## Foundations, complete
+
+This is the end of Part 1, so before naming the decisions, look at what you can now do — because these nine chapters were one argument, and it closes here.
+
+You started with a bug you'd seen a hundred times: a color that looked wrong in context (chapter 1). You learned that a value isn't a color but an instruction (chapter 2), that the instruction runs through a curve so `#808080` isn't half-light (chapter 3), that HSL's knobs lie about the perception they're named for (chapter 4), and that OKLCH's don't (chapter 5). You learned where the screen ends (chapter 6), how to travel between colors without hitting mud or the gamut wall (chapter 7), and how to measure whether two colors read against each other (chapter 8). This chapter closes the loop back to chapter 1: even a perfectly measured, in-gamut, high-contrast palette is still only a _proposal_, because the final judge is a specific pair of eyes with specific settings.
+
+Put together, that's a complete mental model of what a color _is_ before you've generated a single ramp. Part 2 spends that model: every builder decision from here — how to shape a scale, where to anchor lightness, which colors are safe for status and charts — rests on these nine chapters, and you now have the vocabulary to make each one on purpose.
+
+## The decisions this unlocks
+
+Three Part 2 chapters inherit this one directly.
+
+**Chapter 17 — a high-contrast variant axis.** `prefers-contrast: more` and forced-colors mean "one palette for everyone" was never true. Does the engine generate a high-contrast variant of its semantic tokens as a first-class axis? This chapter says it has to, and shows the shape: swap token _values_, keep everything else.
+
+**Chapter 18 — status colors are never hue-alone.** Success, warning, error, info: the exact place where meaning most tempts you to lean on green/amber/red. Every status ships with a redundant carrier — an icon and a lightness difference baked into the pattern — so the meaning survives deutan, protan, grayscale, and forced-colors.
+
+**Chapter 19 — CVD-safe is a hard requirement for data-viz palettes.** A categorical chart palette is a set of colors whose _entire job_ is to be told apart, with no icons or labels to fall back on. You watched the hue-only palette collapse; chapter 19 treats simulate-and-measure — all three filters, minimum ΔEok — as a pass/fail gate on any palette the engine emits.
+
+## Check yourself
+
+1. A teammate ships a status system where "healthy" is green and "down" is red, same lightness, no icons. Roughly what fraction of male users is likely to struggle, which two deficiency types are responsible, and what's the smallest change that fixes it?
+2. "CVD doesn't affect brightness, so if my colors differ in lightness I'm safe." Where exactly is that sentence wrong, and what does it mean for how much you can lean on OKLCH L alone?
+3. A user has Windows High Contrast on. Your card uses a background gradient, a drop shadow, and a colored left border to signal "premium." What does the browser do to each of those three, and which one survives to do the signaling?
+
+## Further reading
+
+- [NEI — Color Blindness](https://www.nei.nih.gov/learn-about-eye-health/eye-conditions-and-diseases/color-blindness) — the "about 1 in 12 men" figure and the plain-language description of the types.
+- Machado, Oliveira & Fernandes, [A Physiologically-based Model for Simulation of Color Vision Deficiency](https://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html) (IEEE TVCG, 2009) — the model and matrices behind culori's filters, with an online simulator.
+- [WCAG 2.2 — 1.4.1 Use of Color](https://www.w3.org/TR/WCAG22/#use-of-color) — the normative "color is not the only means" requirement this chapter's working rule restates.
+- MDN — [`forced-colors`](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors), [`prefers-contrast`](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-contrast), and [`forced-color-adjust`](https://developer.mozilla.org/en-US/docs/Web/CSS/forced-color-adjust) — what each feature forces, what it exposes, and how to opt out where you must.
+- [culori API](https://culorijs.org/api/) — `filterDeficiencyProt` / `Deuter` / `Trit`, the `severity` argument, and `differenceEuclidean('oklab')` for the ΔEok collapse check.
