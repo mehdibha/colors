@@ -97,7 +97,7 @@ export const curriculum: Part[] = [
         slug: 'chroma-curves',
         number: 12,
         title: 'Chroma curves and the gamut ceiling',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'hue-along-the-ramp',
