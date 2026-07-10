@@ -1,0 +1,124 @@
+---
+title: 'Contrast: WCAG 2 vs APCA'
+description: Black on orange scores 7.15:1, white scores 2.94:1 — and most eyes side with the white. How WCAG 2 actually computes contrast, where its ratio parts ways with perception, what APCA responds to instead, and which of the two is actually the law.
+part: 1
+question: When the two contrast meters disagree, whose side is your eye on?
+---
+
+import { OrangeButtonVerdict } from '@/components/playgrounds/orange-button-verdict'
+import { RatioAnatomy } from '@/components/playgrounds/ratio-anatomy'
+import { PolarityFlipCard } from '@/components/playgrounds/polarity-flip-card'
+import { SameRatioTwoWorlds } from '@/components/playgrounds/same-ratio-two-worlds'
+import { SamePairFiveFonts } from '@/components/playgrounds/same-pair-five-fonts'
+import { DualMeterLab } from '@/components/playgrounds/dual-meter-lab'
+import { LineThemUp } from '@/components/playgrounds/line-them-up'
+
+Here's a fight that has been running in design reviews for a decade. The brand color is orange. The accessibility checker insists the button text must be black — white "fails contrast." The designers insist the black looks worse — heavier, cheaper, harder to read. Someone links the checker, someone links a screenshot, and both sides are staring at the same button.
+
+<OrangeButtonVerdict />
+
+Both meters are right, by their own rules — they're measuring different things. This chapter is about what each one actually measures: how WCAG 2's ratio is built (out of parts you already own from chapters 3 and 4), the two places it parts ways with your eye, what APCA responds to instead — and, because contrast is the one place in this course where a number carries legal weight, exactly which meter you're allowed to trust for which job.
+
+## How WCAG 2 scores a pair
+
+Chapter 3 promised that WCAG's contrast math "starts by decoding every channel to linear light," and chapter 4's meters already ran the first half of it. **Relative luminance** — the Y under every "light emitted" readout since then — is: decode each channel through chapter 3's curve to linear light, weight by how much of white's light each primary carries (red 21%, green 72%, blue 7%), sum. That's the right ladder for measuring light — the one lesson WCAG 2 got emphatically right, in 2008, when most of the industry was still doing math on raw hex values.
+
+The score is then a ratio of two luminances:
+
+```
+contrast = (Ylighter + 0.05) / (Ydarker + 0.05)
+```
+
+The 0.05 stands in for stray light bouncing off the glass — and it keeps black from zeroing the denominator, capping the scale at 21:1 (white on black). The thresholds you know come from Success Criterion 1.4.3 (Level AA): **4.5:1** for body text, **3:1** for large text — at least 18 point (24px), or 14 point bold; AAA raises those to 7:1 and 4.5:1. And since WCAG 2.1, criterion 1.4.11 holds **non-text** essentials — icons, input borders, focus rings — to 3:1.
+
+<RatioAnatomy />
+
+Now run the orange button through it. `#ff6600` has Y = 0.308. Black brings Y = 0: the ratio is 0.358 / 0.05 = **7.15** — passes AAA. White brings Y = 1: the ratio is 1.05 / 0.358 = **2.94** — fails even the large-text bar. Look at where black's 7.15 came from, though: almost all of it is the denominator bottoming out at the flare constant. Against black, _any_ background at Y ≥ 0.30 scores 7:1 or better automatically. The formula isn't scoring how well black reads on orange — it's scoring how little light black emits.
+
+There's a general version of this worth deriving once. Solve for the background luminance where black text and white text tie, and you get Y ≈ 0.18 — the middle gray near `#767676`. **For any background brighter than that, the formula's answer is always black text.** Every orange, every vivid coral, most brand blues and greens at button strength — the entire mid-tone range where accent colors live — WCAG votes black, categorically, before your eye gets a say. (And a precision nerd-snipe: the internet's favorite "just passes" gray, `#777`, doesn't — it's 4.48:1, a fail by two hundredths. The gray that passes by a hair is `#767676`.)
+
+## Two blind spots, by construction
+
+Notice what the formula did before dividing: it sorted the pair into lighter and darker. Which color is the _text_ never enters the math. WCAG 2 is **polarity-blind** — not as an oversight you might catch on some exotic pair, but by construction, on every pair:
+
+<PolarityFlipCard />
+
+The second blind spot compounds it. The ratio runs on linear light — and chapter 3's whole lesson was that perception doesn't: vision compresses, and the same ratio of photons is worth different amounts of _seen_ contrast at different absolute levels. A ratio that means "comfortably readable" between a slate gray and white can mean "washed out" between a mid gray and near-black — same number, computed the same honest way, landing on the wrong side of your eye:
+
+<SameRatioTwoWorlds />
+
+Be fair to the standard: in its home territory — dark text on light backgrounds, the case its thresholds were tuned for — the ratio is broadly reasonable, and you'll see the two meters agree there in the playground below. The failures cluster where the assumptions break: dark mode, mid-tone pairs, and anything scored against black, where the denominator does the talking. Those stopped being corner cases the day dark mode became a default option — and the orange button ships today.
+
+## APCA: scoring the reading, not the light
+
+APCA — the Accessible Perceptual Contrast Algorithm, from Andrew Somers' SAPC research — starts from nearly the same place: the same three channel weights, decoding with a plain 2.4 exponent instead of the piecewise curve. What it does next is what matters, and you don't need the formula to understand it — you need what the formula _responds to_:
+
+- **Polarity.** APCA applies different response curves to the text color and the background color — and different ones again depending on which is lighter. Swap text and background and the score genuinely changes; the sign records the direction (negative Lc means light text on dark). The dark-mode failure you just saw stops being invisible: WCAG scored those twins 4.54 and 4.52; APCA scores them Lc 71.6 and −35.3. This is chapter 1's lesson — arrangement changes perception — finally built into a measurement.
+- **The dark end.** Instead of a flare constant propping up a division, APCA soft-clamps luminance near black and works on differences of compressed values, not ratios of linear ones. Black stops being a free 21:1 jackpot — which is exactly where the orange button verdict flipped.
+- **Spatial frequency.** Thin, small glyphs are genuinely harder to read than bold, large ones at identical colors — contrast lives in stroke widths, not just color pairs. The Lc score itself is computed from colors only; APCA's conformance model then couples it to a font size and weight lookup. The published guidance: **Lc 90** preferred for body text, **Lc 75** the body-text minimum (18px regular), **Lc 60** for content text no smaller than 24px, **Lc 45** for large headlines (36px, or 24px bold), **Lc 30** the absolute floor for any text, **Lc 15** for non-text elements. One score, sliding requirements — where WCAG 2 has one cliff at 4.5 and a single coarse "large text" discount:
+
+<SamePairFiveFonts />
+
+The scale runs from 0 to about 106 (dark-on-light) and 0 to about −108 (light-on-dark). As a _very_ rough bridge from the old world: on light backgrounds, Lc 60 clears 3:1 and Lc 75 clears 4.5:1 — the APCA docs publish that comparison and immediately warn it's not an equivalence. The playground exists so you stop needing the bridge:
+
+<DualMeterLab />
+
+Two hunts worth running. Load **Orange · black**, then **Orange · white**: WCAG ranks black the runaway winner; APCA reverses the ranking, and the black text that sailed through WCAG doesn't clear APCA's body-text bar. Then load **Dark muted** — a pass at 4.52:1, and APCA's Lc −35.3 calls it what your eye sees: below the floor for body text. And note what the orange fight was actually telling you: when the meters disagree, the pair is fragile. The professional answer was never to pick a referee — it was to fix the orange. Darken it two steps to `#c2410c` and white clears _both_ meters (5.18:1, Lc −79.9). A design that needs a favorable referee is the design to change.
+
+## Rankings, not just thresholds
+
+It would be manageable if the two models merely drew their passing lines at different heights. They don't — they _order pairs differently_. A pair that WCAG ranks far above another can rank below it in APCA:
+
+<LineThemUp />
+
+That's the engine-sized fact. A ramp generator that optimizes "every step hits 4.5:1 against white" and one that optimizes "every step hits Lc 75" don't produce shifted versions of the same ramp — they disagree about which colors are the good ones, most sharply in dark mode and around saturated mid-tones like the orange. Whichever meter the generator trusts gets baked into every palette it emits.
+
+## The standards status, exactly
+
+This part has no room for vibes, so here it is precisely.
+
+**WCAG 2 is the normative standard, and the legal one.** US Section 508 incorporates WCAG 2.0 AA; the DOJ's 2024 rule under ADA Title II requires WCAG 2.1 AA for state and local government web content; the EU's EN 301 549 — the standard behind the European Accessibility Act — builds on WCAG 2.1 AA. When a contract, an audit, or a lawsuit says "contrast," it means the ratio and the 4.5:1 from this chapter's second section.
+
+**APCA is a candidate, not a standard.** In its own documentation's words, it is "the candidate contrast method for the future WCAG 3," and "standards that will be incorporating APCA are still developmental." The reference implementation labels the algorithm beta-stable. Passing Lc 75 is not a compliance claim you can make to anyone today.
+
+**WCAG 3 is years away — and won't retire WCAG 2 when it lands.** As of this writing, WCAG 3.0 is a W3C Working Draft (03 March 2026), which by W3C's own boilerplate implies no endorsement. The draft says of itself that it "still has several years of work," and — the sentence people skip — "WCAG 3 does not replace WCAG 2. WCAG 2 is used around the world and will still be required."
+
+So the engineering posture writes itself, and it isn't a compromise — it's using each instrument for what it measures. **WCAG 2 is the compliance floor: ship it, test it, never emit a default pairing below it. APCA is the design instrument: use it to choose among passing candidates, to catch the dark-mode pairs the ratio waves through, and to rank.** The one thing you may not do is the popular mistake in both directions: treating an APCA pass as permission to fail 4.5:1, or treating 4.5:1 as evidence the text reads well.
+
+## The same scores, in code
+
+```js
+import { wcagContrast, wcagLuminance } from 'culori'
+
+wcagLuminance('#ff6600') // 0.308 — chapter 4's meter, same function
+wcagContrast('#000000', '#ff6600') // 7.15
+wcagContrast('#ffffff', '#ff6600') // 2.94
+```
+
+culori ships no APCA, so this chapter's Lc meters run a forty-five-line implementation of the published APCA-W3 constants (`src/lib/apca.ts`), verified against the reference values in the APCA documentation — `#888` on `#fff` → Lc 63.056469930209424, `#000` on `#aaa` → 58.146262578561334, and their polarity flips — reproduced to the last digit. Every number in this chapter comes from these two functions; nothing is traced from a diagram.
+
+## The decision this unlocks
+
+Three Part 2 chapters pick up exactly this fork.
+
+**Chapter 11 — contrast-anchored ramps.** One of the three ramp philosophies generates steps _from_ contrast targets ("step 500 always hits X against the background"). You now know that "X" must name its meter, and that the choice isn't cosmetic: anchoring to ratios versus Lc yields different ramps — most divergent precisely in dark mode, where the engine most needs the guarantee.
+
+**Chapter 17 — pairing tokens.** A token scheme that promises "every `on-*` color is readable on its surface" is promising a contrast guarantee. The auditable half of that promise is WCAG 2 — it's the claim the outside world can hold you to. The _good taste_ half — which passing candidate to pick, whether the dark-mode variant actually reads — is APCA's job.
+
+**Chapter 24 — Adobe's Leonardo.** Leonardo generates colors from target contrast values and lets you select the scoring model. That switch used to look like a nerd option; it's actually the entire subject of this chapter, exposed as a parameter.
+
+One door stays deliberately closed: everything here assumed typical vision and default settings. Low-vision users, color-vision deficiencies, and `prefers-contrast` are chapter 9's subject — contrast for _whom_ is a bigger question than either meter answers.
+
+## Check yourself
+
+1. Walk the orange button through WCAG 2 by hand: Y is 0.308 for the orange, 0 for black, 1 for white. Where does black's 7.15 actually come from — and why does APCA, which soft-clamps the dark end instead of dividing by a propped-up denominator, rank the two buttons the other way?
+2. A dark-mode theme's muted text passes 4.5:1 in the audit and users still report it's unreadable. Name the two constructions in WCAG 2's formula that let this pair through, and what APCA responds to that catches it.
+3. A teammate proposes switching CI's contrast checks from WCAG 2 to APCA "since WCAG 3 is around the corner." What's right in that sentence, what's wrong, and what should the pipeline do with each score?
+
+## Further reading
+
+- [WCAG 2.2, §1.4.3 Contrast (Minimum)](https://www.w3.org/TR/WCAG22/#contrast-minimum) and the [relative luminance definition](https://www.w3.org/TR/WCAG22/#dfn-relative-luminance) — the ratio, the thresholds, the large-text carve-out, and 1.4.11 for non-text; the formula every legal requirement points at.
+- [Myndex APCA documentation hub](https://git.myndex.com/) — "APCA in a Nutshell" for the Lc levels and font lookup, the [apca-w3 reference implementation](https://github.com/Myndex/apca-w3) with the published constants and reference values, and [apcacontrast.com](https://www.myndex.com/APCA/) as the live calculator.
+- Andrew Somers, [The Realities And Myths Of Contrast And Color](https://www.smashingmagazine.com/2022/09/realities-myths-contrast-color/) — the case against ratio-based contrast, by APCA's author, with the perception research behind polarity and spatial frequency.
+- [WCAG 3.0 Working Draft](https://www.w3.org/TR/wcag-3.0/) — read the status section and introduction yourself: the maturity model, the timeline honesty, and the "does not replace WCAG 2" sentence quoted above.
+- [culori API](https://culorijs.org/api/) — `wcagLuminance` and `wcagContrast`, the two functions behind every WCAG number in this chapter.

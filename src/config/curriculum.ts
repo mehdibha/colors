@@ -66,7 +66,7 @@ export const curriculum: Part[] = [
         slug: 'contrast',
         number: 8,
         title: 'Contrast: WCAG 2 vs APCA',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'seeing-differently',
