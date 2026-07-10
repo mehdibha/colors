@@ -85,7 +85,7 @@ export const curriculum: Part[] = [
         slug: 'anatomy-of-a-scale',
         number: 10,
         title: 'Anatomy of a scale: steps are jobs',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'lightness-curves',

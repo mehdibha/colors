@@ -1,0 +1,122 @@
+---
+title: 'Anatomy of a scale: steps are jobs'
+description: A color scale looks like twelve shades of one hue. It's actually twelve jobs — app background, hover state, border, solid, text — with contracts between neighbors and contrast guarantees at the far end. Which jobs exist is the first engine decision, and it comes before any math.
+part: 2
+question: What breaks when a part of this card takes the wrong step?
+---
+
+import { TwelveJobsLegend } from '@/components/playgrounds/twelve-jobs-legend'
+import { StepsAreStates } from '@/components/playgrounds/steps-are-states'
+import { SolidStepText } from '@/components/playgrounds/solid-step-text'
+import { ScalePaintsAPage } from '@/components/playgrounds/scale-paints-a-page'
+import { BuildACard } from '@/components/playgrounds/build-a-card'
+
+Part 1 ended with a complete mental model: what a color is, where the screen ends, how to measure a pair, whose eyes get a vote. This is where you start spending it. Part 2 is eleven decisions — the ones a color engine has to make — and this chapter is the first because every other one depends on it.
+
+It isn't a curve, a formula, or a favorite hue. It's a head-count.
+
+## Ten pretty shades, read wrong
+
+Open any design system and you'll find the same artifact: the scale. Ten or twelve swatches of one hue, light to dark, numbered. The natural way to read it is as a gradient — pick a nice light end, a nice dark end, spread the rest evenly between. Chapter 5 even handed you the tool: step L evenly in OKLCH and the spacing will at least be perceptually honest.
+
+That reading produces palettes that look great in a screenshot and fall apart in a product, because it answers the wrong question. A UI doesn't need twelve shades of blue. It needs an app background, a card background, a hover state that reads as the same surface leaning toward you, a border you can actually see, a button that reads as a button, and text that survives on top of all of the above. **A scale is not a gradient with taste. It's a row of job slots — and the swatches are just whoever got hired.**
+
+## The canonical worked example
+
+The cleanest public statement of this idea is Radix Colors — worth studying the way you'd study a well-designed API, for the pattern rather than the brand. Every Radix scale has exactly 12 steps, and every step has a written job description:
+
+| Step | Job                                     |
+| ---- | --------------------------------------- |
+| 1    | App background                          |
+| 2    | Subtle background                       |
+| 3    | UI element background                   |
+| 4    | Hovered UI element background           |
+| 5    | Active / Selected UI element background |
+| 6    | Subtle borders and separators           |
+| 7    | UI element border and focus rings       |
+| 8    | Hovered UI element border               |
+| 9    | Solid backgrounds                       |
+| 10   | Hovered solid backgrounds               |
+| 11   | Low-contrast text                       |
+| 12   | High-contrast text                      |
+
+<TwelveJobsLegend />
+
+Three things to notice before moving on.
+
+**The spacing is wildly uneven — on purpose.** Measure Radix blue with chapter 3's meter and the gaps between neighbors run 1.3, 2.6, 2.5, 3.9, 4.9, 6.2, 9.0, 10.8, 3.1, 7.6, 26.7 L*. Read as a gradient, that's a broken gradient. Read as jobs, it explains itself: backgrounds huddle within a few L* of each other because surfaces differ by a whisper; the solid steps sit far below them because a button must pop; and the 26.7 L\* cliff between steps 11 and 12 is the distance between "de-emphasized" and "headline." Jobs dictate spacing — which is exactly why you can't generate a scale by dividing lightness into equal slices and calling it done.
+
+**Step 9 is the star hire.** In Radix's own words, it "has the highest chroma of all steps in the scale… the purest step, the step mixed with the least amount of white or black." When a brand hands you their color, this is usually the slot it's aiming for — chapter 14 is about what happens when the seed lands here and the other eleven slots have to be derived around it.
+
+**The jobs transfer.** Slate has the same twelve job descriptions as blue. That's what makes "swap the accent from blue to violet" a one-line refactor instead of a redesign: the slots are the API, the paint is an implementation detail.
+
+## Neighbors are contracts
+
+Look down the job table again and you'll see it's not twelve independent slots. Steps 3, 4 and 5 are the same component at rest, hovered, and pressed. Steps 6, 7 and 8 are the same border at rest, interactive, and emphasized. Steps 9 and 10 are the same solid, still and under a cursor.
+
+<StepsAreStates />
+
+The relationships run vertically too. Step 2's entire purpose is to sit on step 1. Step 3's component backgrounds live on steps 1 and 2. Step 6's borders exist to draw edges on the backgrounds below them — a border that matches its surface isn't a border. None of these steps is correct or incorrect in isolation; each one is correct _with respect to its neighbors_. That's the real content of the reframe: a scale is a set of promises between slots, and changing one step silently renegotiates every promise it participates in.
+
+## Some jobs carry numbers
+
+For most slots the contract is qualitative — "reads as the same surface," "visible against." At the text end it becomes measurable, and Radix states it outright: steps 11 and 12 "are guaranteed to Lc 60 and Lc 90 APCA contrast ratio on top of a step 2 background from the same scale." (Their phrasing — Lc is chapter 8's signed score, not a ratio.)
+
+Run chapter 8's meters over the actual values. Blue 11 on blue 2: **Lc 68.9**, and 4.53:1 on the WCAG side — clearing the body-text bar by three hundredths. Blue 12 on blue 2: **Lc 94.7**, 12.0:1. The guarantee holds, with room on one meter and almost none on the other.
+
+Now notice what the guarantee _names_: not just the steps, but the background. It is not "step 11 is readable" — readable on what? Put blue 11 on blue 5, a legitimate selected-row background from the same scale, and it drops to 3.62:1, Lc 54.4 — under both bars. That's not a bug in Radix; it's the anatomy of any honest contrast promise. **A contrast guarantee has three parts: the foreground, the meter, and the named set of backgrounds.** Shrink the background set and the promise gets stronger; leave it unnamed and it isn't a promise at all.
+
+The solid slot carries a number of its own, with a twist. Step 9's job — buttons, badges, the colored things — implies that _something must be readable on top of it_, and which something depends on the hue:
+
+<SolidStepText />
+
+Radix's rule: most step 9s are designed for white text, but "Sky, Mint, Lime, Yellow, and Amber are designed for dark foreground text…" — no lightness curve can put vivid yellow anywhere but near-white, so the label flips instead. And even in the well-behaved hues there's a fight you've seen before: white on blue 9 scores 3.26:1 (a WCAG fail for body text) but Lc −64.6 (an APCA pass for a button-sized label); black on the same blue scores 6.43:1 but a feeble Lc 44.9. The two meters pick opposite winners — chapter 8's orange button, wearing blue now. An engine doesn't get to shrug at this: it either keeps the vivid solid and accepts labels that only clear WCAG's large-text bar, or darkens the solid until white passes both meters — 5.26:1 on the blue Tailwind ships as blue-600. Writing "solid background" in a job description means signing up to answer that question, per hue.
+
+## One scale paints a page
+
+Before you build anything, watch how far the twelve slots stretch. One neutral scale, one accent scale, an entire screen:
+
+<ScalePaintsAPage />
+
+## Build the card
+
+Now the roles reverse: you do the assigning. Below is a live scale — the lightness and chroma curves are lifted from Radix blue and re-aimed at whatever hue you pick; _how_ to design such curves is chapters 11 and 12. Every part of the card takes its color from one step, and the checker holds the assignments to the contracts from this chapter, scored with both of chapter 8's meters. One provenance note: the checker's Lc bars (60 for body, 75 for the heading) mirror Radix's step-11/12 guarantee levels — APCA's own font lookup from chapter 8 would ask more of 13-pixel body text.
+
+<BuildACard />
+
+Things worth doing to it, in order:
+
+- **Read the checker at rest.** The defaults are the Radix job assignments, and even they ship with one amber row — the white-on-9 button label that passes APCA and fails WCAG. That tension is in the product you shipped last year, whether or not anything measured it.
+- **Put the body text on step 9.** The purest, prettiest step in the scale — and unreadable prose. Beautiful is not a job qualification.
+- **Move the card to step 5.** The text didn't change, and yet it broke: its guarantee named backgrounds 1–2, and you moved the floor.
+- **Drop the border to step 3.** Nothing fails a contrast law; the card just quietly loses its edge.
+- **Then drag the hue.** Every assignment survives re-aiming, within the meters' tolerances — because you assigned jobs, not hex codes. That invariance is the entire business case for this chapter.
+
+## The same idea in other dialects
+
+Radix states jobs as contracts. The other big systems express the same grammar with different loudness — worth knowing now, because chapters 21–23 dissect them properly.
+
+**Tailwind: jobs by convention.** Every color ships as 11 steps named 50 to 950 — "50 being the lightest, and 950 being the darkest." The names encode lightness, not responsibility; the docs show idiomatic patterns (light tints as backgrounds, a mid-500 as the solid, dark grays as text) but assign no roles and promise no contrast. The trade-off is real on both sides: zero ceremony and total freedom — and nothing breaks loudly when someone ships `text-slate-400` on `bg-slate-100`. The contracts exist, but they live in reviewers' heads.
+
+**Material 3: jobs by arithmetic.** The opposite extreme. Each key color expands into a tonal palette, and _roles_ — semantic slots like `primary`, `on-primary`, `primary-container`, `on-primary-container` — pick tones from it, with different picks for light and dark themes. The contracts are subtraction: HCT's tone channel is CIELAB's L\* — the meter you've carried since chapter 3 — and a large enough tone difference between two roles guarantees a WCAG ratio. Guaranteed pairings become tone math, at the cost of anchoring everything to WCAG's ratio, blind spots included. The exact arithmetic is chapter 23's case study.
+
+Three dialects, one grammar: slots with responsibilities, relationships between slots, and — wherever text is involved — a contrast promise with a meter attached. They differ in how loudly the contracts are stated, from Radix's written guarantees to Tailwind's folklore. What no serious system does is the thing the naive reading suggests: pick ten shades because they look nice together.
+
+## The decision this unlocks
+
+This chapter _is_ a Part 2 decision — the foundation one: **the engine's output contract.** Before any generation math, the engine commits to three things: how many slots; which jobs they carry (does the system distinguish app and subtle backgrounds? do solids get a hover twin? is there one text step or two?); and which guarantees hold between them — under which meter, against which named backgrounds. Everything that follows is implementation. Chapter 11's lightness curves exist to _satisfy_ this contract, not the other way around. Chapter 14 must drop a brand seed into slot 9 without voiding the other eleven warranties. Chapter 16 re-executes the same jobs on a dark page. Chapter 17 gives the slots names that components can consume.
+
+Get the contract right and the rest of Part 2 is engineering. Skip it, and no curve, however perceptually uniform, can save you — you'll have generated ten pretty shades.
+
+## Check yourself
+
+1. A teammate moves a card from step 2 to step 5 "because it looked better," and the step-11 body text on it now fails 4.5:1. They argue the text is fine — "it passed contrast." What exactly did the text's guarantee promise, and what are the two legitimate fixes?
+2. Steps 3–4–5 and steps 6–7–8 encode the same kind of relationship. What is it, and why does regenerating step 3 alone — even to a perfectly nice color — break something no contrast meter will catch?
+3. Your engine's design review proposes 8 steps instead of 12, "it's leaner." What question do you have to answer before you can agree, and what are two concrete things that stop existing when you merge slots?
+
+## Further reading
+
+- [Radix Colors — Understanding the scale](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale) — the 12-job table, the per-step use cases, the Lc 60/90 guarantee, and the list of step 9s that take dark text.
+- [Tailwind CSS — Colors](https://tailwindcss.com/docs/colors) — the 50–950 convention and the default palette; note what the docs demonstrate versus what they promise.
+- [Material 3 — Color roles](https://m3.material.io/styles/color/roles) — the role system (`primary`, `on-primary`, containers) and how roles pick tones from 13-tone palettes in light and dark schemes.
+- [material-color-utilities](https://github.com/material-foundation/material-color-utilities) — Google's reference implementation of HCT; the source of the tone-difference contrast contract.
