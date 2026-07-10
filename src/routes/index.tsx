@@ -17,7 +17,7 @@ function Home() {
     <div className="mx-auto w-full max-w-4xl px-6">
       <section className="py-12 sm:py-16">
         <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-          Learn colors for design systems.
+          Learn everything about colors.
         </h1>
         <p className="mt-4 max-w-xl text-base text-balance text-fg-muted">
           The concepts you actually need to build a state-of-the-art color
