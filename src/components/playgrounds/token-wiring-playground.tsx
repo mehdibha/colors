@@ -213,7 +213,9 @@ export function TokenWiringPlayground() {
   const broken = promises.filter((p) => !p.passW).length
 
   const focus = (id: ElementId) => ({
+    tabIndex: 0,
     onMouseEnter: () => setFocused(id),
+    onFocus: () => setFocused(id),
     onClick: (e: MouseEvent) => {
       e.stopPropagation()
       setFocused(id)

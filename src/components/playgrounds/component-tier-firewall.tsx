@@ -16,8 +16,10 @@ type CardChoice = keyof typeof CARD_VALUES
 const FG = '#070707'
 const FG_MUTED = '#626262'
 const BORDER = '#dbdbdb'
+// neutral-800, not tooltip's actual neutral-950, so the surface stays distinct from FG.
 const INVERSE_BG = '#1d1d1d'
 const INVERSE_FG = '#fafafa'
+const INVERSE_FG_MUTED = '#a3a3a3'
 
 function Surface({
   name,
@@ -39,7 +41,10 @@ function Surface({
       >
         {name}
       </span>
-      <span className="font-mono text-[0.6rem]" style={{ color: FG_MUTED }}>
+      <span
+        className="font-mono text-[0.6rem]"
+        style={{ color: bg === INVERSE_BG ? INVERSE_FG_MUTED : FG_MUTED }}
+      >
         {token}
       </span>
     </div>

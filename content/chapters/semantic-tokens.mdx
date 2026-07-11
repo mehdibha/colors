@@ -5,6 +5,7 @@ part: 2
 question: 'Repoint accent and the whole UI follows — which promises break, and what catches them?'
 ---
 
+import { BorderNullCase } from '@/components/playgrounds/border-null-case'
 import { NumericVsSemantic } from '@/components/playgrounds/numeric-vs-semantic'
 import { PairingFlip } from '@/components/playgrounds/pairing-flip'
 import { ComponentTierFirewall } from '@/components/playgrounds/component-tier-firewall'
@@ -36,7 +37,7 @@ The dialects trade the same two currencies in opposite directions:
 
 Numeric names are flexible and opaque. Any step can go anywhere — and chapter 10 already showed the price: nothing breaks loudly when someone ships `text-slate-400` on `bg-slate-100`, and the rebrand above is a codebase-wide find-and-replace, because every call site pinned the hue. Semantic names are guided and finite. `fg-muted` is a decision already made — a component author can't misfile it — and the theme owns the hue, so a rebrand is one line. The finiteness is also the weakness: the vocabulary can't say everything. Radix's own aliasing guide walks into it honestly — "creating semantic aliases like `accent`, `primary`, `neutral`, or `brand` can be helpful, especially when it comes to theming," but "you will likely run into issues where you need to use the same scale for multiple semantics": map `yellow` to "warning" and you'll need `yellow` again for "pending," `red` for both "danger" and "error." When no name fits, developers escape to primitives, and the API leaks.
 
-Mature systems land on both: numeric primitives underneath, a semantic tier on top, and a norm about which tier application code may touch. Radix ships the primitives and leaves the semantic tier as documented homework; Material ships only the semantic tier and hides the palette; Tailwind ships primitives and lets convention do the rest.
+Mature systems land on both: numeric primitives underneath, a semantic tier on top, and a norm about which tier application code may touch. Radix ships the primitives and leaves the semantic tier as documented homework; Material ships the semantic tier and keeps the palette out of the component API; Tailwind ships primitives and lets convention do the rest.
 
 ## Pairing is the contract
 
@@ -48,7 +49,9 @@ That last sentence hides a decision worth dragging into the light. Whichever _me
 
 Run dotUI's actual default accent through it. `--blue-500` is `#4992dd`, relative luminance 0.27 — above chapter 8's Y ≈ 0.18 tie point, so WCAG votes black categorically: black 6.44:1, white 3.26:1, and the max-ratio rule ships a black label. APCA sides with white, −65.1 against 44.4. This is the orange-button fight from chapter 8, reincarnated as a token default — and it lands exactly on steps 500–600 of the ramp, where solid buttons live. Chapter 8's posture resolves it here the same way it did there: the pairing promise must name both instruments — a WCAG floor, because that's the auditable, legal half — and an APCA target, because that's the half that predicts reading. A generator that quietly optimizes one meter will systematically ship pairs the other meter — and many eyes — dispute.
 
-The contract also has an honest null case: some tokens promise nothing. dotUI's subtle `border` on `bg` measures 1.33:1 — decorative by design, chapter 10's quiet card edge. But `border-field`, an input's boundary, arguably owes the 3:1 non-text minimum of WCAG 1.4.11 and currently measures 1.87:1. Either answer can be right; an API is only honest if it says _which tokens carry promises and which explicitly don't_.
+The contract also has an honest null case: some tokens promise nothing. dotUI's subtle `border` on `bg` measures 1.33:1 — decorative by design, chapter 10's quiet card edge. But `border-field`, an input's boundary, arguably owes the 3:1 non-text minimum of WCAG 1.4.11 and currently measures 1.87:1. Either answer can be right; an API is only honest if it says _which tokens carry promises and which explicitly don't_:
+
+<BorderNullCase />
 
 ## One name, every room
 

@@ -24,7 +24,7 @@ const SYSTEMS = [
   {
     name: 'dotUI',
     count: 83,
-    unit: 'semantic tokens',
+    unit: 'public tokens',
     note: '77 semantic + 6 component-tier',
   },
 ]
