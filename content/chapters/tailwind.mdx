@@ -1,0 +1,100 @@
+---
+title: 'Tailwind CSS'
+description: 'Tailwind v4 rewrote 286 colors in OKLCH to go vivid on P3 and ships them as CSS variables that mint their own utilities — the color engine, its hard part done right. Then it stops exactly where chapter 17 began: numeric names, no semantic tier, no pairing promise, so every contrast failure Part 2 warned about is one utility class away.'
+part: 3
+question: 'Pick any two Tailwind steps for text and background — what stops you shipping a pair no one can read?'
+---
+
+import { TailwindGamutHeadroom } from '@/components/playgrounds/tailwind-gamut-headroom'
+import { TailwindCrossHueLightness } from '@/components/playgrounds/tailwind-cross-hue-lightness'
+import { TailwindThemeToUtility } from '@/components/playgrounds/tailwind-theme-to-utility'
+import { TailwindPaletteInspector } from '@/components/playgrounds/tailwind-palette-inspector'
+
+Chapter 17 named two naming dialects and spent its whole budget on the semantic one. This chapter is the other dialect — numeric — in its purest, most-shipped form. Tailwind is the CSS half the web actually writes, and v4 got the color engine's hard part right: the palette is OKLCH now, authored to go vivid on P3 (chapters 5 and 6), and delivered as CSS variables that mint their own utilities (chapter 20's mechanism, in production at web scale). Then it stops exactly where chapter 17 started. There is no semantic tier and no pairing promise — `blue-500` names a position on a ramp and nothing else. So this is a clean case study: two mechanisms to steal outright, and one whole missing floor to reject.
+
+## The palette is OKLCH now
+
+v4 rewrote every default color from `rgb` to `oklch`. In the authors' words, they "upgraded the entire default color palette from rgb to oklch, taking advantage of the wider gamut to make the colors more vivid in places where we were previously limited by the sRGB color space." The shape is familiar from chapter 10: 11 steps per family, `50` (lightest) through `950` (darkest). The count grew — 22 families at the v4.0 launch, 26 as of v4.2 once `mauve`, `olive`, `mist`, and `taupe` landed — so the default theme is now 26 × 11 = 286 colors.
+
+The detail that matters for the engine is which value is the source of truth. In the docs' color reference you "copy the OKLCH value or shift+click to copy the nearest hex value" — the `oklch()` constant is authoritative, hex is the derived fallback for old browsers. That is dotUI's own front-end format: the space the engine computes in, Tailwind now authors in.
+
+## Vivid, and measurably so
+
+The P3 upgrade is not marketing. Take a mid-ramp step, read its chroma at the P3 ceiling, then gamut-map it back to sRGB (chapter 6's `clampChroma`) and measure how much chroma it had to give up:
+
+<TailwindGamutHeadroom />
+
+`amber-500` is authored at C 0.188. Clamp it to sRGB and it drops enough to cost ΔEOK 0.022 — past chapter 14's 0.02 just-noticeable difference. That gap is exactly the vividness v4 bought: color that "was previously limited by the sRGB color space." On an sRGB screen you see the clamped version and nothing that was ever there is lost; on a P3 screen the extra chroma is real and visible. The honest footnote is that the win is hue-shaped — `blue-500` and `red-600` also exceed sRGB, but only by ΔEOK 0.010, under the JND, so their headroom is real yet barely perceptible. Amber, out where the sRGB tent is lowest, is where OKLCH pays. Authoring at the P3 ceiling and mapping down is the right default, and it's the first thing to steal.
+
+## Vivid, but not level
+
+Here is the claim everyone assumes and the primary sources never make: that v4 equalized perceived lightness across hues. It didn't. Line up step `500` across families and the lightnesses don't agree:
+
+<TailwindCrossHueLightness />
+
+`blue-500` sits at L 0.623; `amber-500` at L 0.769 — a 0.146 spread you can see in the strip. Two reasons, both Part 1 facts wearing framework clothes. First, the gamut tent (chapter 6): there is no dark vivid amber, so to stay saturated the amber family rides high — chapter 13's "no dark vivid yellow," one hue over. Second, Tailwind deliberately "kept the balance between colors the same as v3" so the upgrade wouldn't break anyone — a hand-tuned reference target (chapter 11), not a lightness grid. State the status plainly: even lightness is an observable near-property of a few mid-band steps, never a documented design goal. The `500` row is a _same-as-v3_ row, not an iso-lightness row.
+
+The engine consequence is sharp. If you lift Tailwind's numbers expecting chapter 10's contrast-by-construction, you don't get it. `500` is not one lightness, so `bg-*-500` is not one contrast — a white label that clears the bar on `amber-500` (the lighter one) can fail on `blue-500`. A utility palette optimized for vivid, recognizable per-hue color is behaving correctly; it only becomes a trap when you mistake it for a system.
+
+## `@theme` is the delivery
+
+The distribution mechanism is chapter 20's, shipped. A single declaration does two jobs at once:
+
+<TailwindThemeToUtility />
+
+`@theme { --color-blue-500: oklch(…) }` emits a real `:root` custom property _and_ generates the matching `bg-`, `text-`, `border-`, and `ring-` utilities from it. Tailwind "takes all of your design tokens and makes them available as CSS variables by default," in the `--color-*` namespace, "so you can reference any value you need at run-time using just CSS." The palette _is_ CSS variables now — runtime-addressable, themeable in plain CSS, no build step to read a color. This is the delivery layer chapter 20 argued for, validated at scale. Steal it.
+
+## The name is the ramp position
+
+Now the reject. Tailwind's names are numeric only: `blue-500` encodes hue and step and carries no role. No `primary`, no `surface`, no `danger` ships in the default palette — the whole thing is chapter 17's primitive tier and only that tier. The trade is chapter 17's exactly: flexible, because any step can go anywhere; opaque, because the name can never tell you it's wrong.
+
+And chapter 10's verdict lands on cue — nothing breaks loudly. `text-slate-400` on `bg-slate-100` is valid Tailwind that compiles, ships, and measures 2.40:1, a body-text failure. The compiler's contract is to emit the class, not to check the pair. There is no layer whose job is to notice.
+
+## No pairing promise
+
+Dark mode makes the gap vivid. Tailwind's `dark:` variant ships no baked dark values — you re-pick every step by hand (`bg-white dark:bg-gray-800`, `text-gray-900 dark:text-white`), and nothing verifies the result. So the single most common button on the web, `text-white bg-blue-500`, ships with no guarantee at all. Measure it: WCAG 3.76:1, below the 4.5 body floor; APCA Lc −70, above the 60 body target. Chapter 8's orange-button fight, reincarnated as the framework's default gesture — and Tailwind takes no position, because there's no semantic tier that could hold one.
+
+## The lab
+
+Every Tailwind color, two you pick, and the meters chapter 17 said a palette owes its consumers. Choose a family, a background step, and a text color — the preview paints the pair, the class names show it's real Tailwind, and both meters read out live. The default is `text-white` on `bg-blue-500`: the button everyone ships.
+
+<TailwindPaletteInspector />
+
+Worth doing, in order:
+
+- **Read the default.** `text-white bg-blue-500` — WCAG 3.76:1 fails the body floor, APCA Lc −70 passes it. The meters split; Tailwind ships it silently either way. This is chapter 8's fight, defaulted.
+- **Force it worse.** Move the background to `amber-500` with `text-white`: 2.13:1, Lc −46 — both meters fail, and the class still compiles. Nothing in Tailwind objected.
+- **The slate trap.** Family `Slate`, background `100`, text `400`: 2.40:1, the mis-wire from the prose. Plausible, common, unreadable, valid.
+- **Find a pair that holds.** Background `100`, text `700` or `800`: now both meters clear. It was reachable all along — the palette contains safe pairs and unsafe pairs and treats them identically. The guarantee is the reader's job, which is precisely what chapter 17's `-foreground` promise moves off the reader.
+
+## What the engine should steal — and reject
+
+Tailwind is two things stacked: a genuinely modern color engine under a deliberately dumb naming layer. dotUI should take the engine and refuse the layer.
+
+**Steal:**
+
+1. **OKLCH as the authoring format, hex as fallback.** The engine already computes in OKLCH; Tailwind proves at web scale that _shipping_ OKLCH constants as the source of truth — with the nearest hex as a derived compatibility value — is the right call, not a research toy.
+2. **Author at the P3 ceiling, gamut-map down for sRGB.** The chroma headroom is real and measurable (amber's 0.022 past the JND, even where blue's and red's fall under it). Author against P3 and clamp per chapter 6; never author against the sRGB ceiling and leave the vividness on the table.
+3. **`@theme`-style delivery.** Emit the whole token table as CSS custom properties that also generate utilities. Chapter 20's mechanism, battle-tested — the palette should be addressable in plain CSS at runtime, and it is exactly the substrate a semantic tier aliases onto.
+
+**Reject:**
+
+4. **Numeric names as the public API.** Keep the semantic tier (chapter 17) _on top_ of the numeric primitives. Application code consumes `accent`, not `blue-500`. Tailwind's palette is a legitimate primitive tier and nothing more.
+5. **A palette with no pairing floor.** Every surface the engine emits owes a text partner, checked to a WCAG 4.5:1 floor and reported against an APCA target (chapters 8 and 17). Tailwind's silence on `text-white bg-blue-500` is the exact failure the semantic tier exists to prevent — don't inherit the silence with the OKLCH.
+6. **Even lightness by assumption.** Do not borrow Tailwind's numbers expecting a contrast grid; `500` is not one lightness. If the engine wants contrast-by-construction (chapter 10), it sets the lightness curve itself (chapter 11) — it does not copy a hand-tuned reference and hope the ends line up. And unlike Tailwind's frozen, seedless palette, dotUI's front door takes a brand hex and generates (chapter 14): borrow Tailwind's per-hue curves as reference, never its non-generativity.
+
+Left open, by design: Radix's hand-tuned reference scale is chapter 21; Material's tonal generation is chapter 23; Leonardo's contrast-anchored generation is chapter 24 — four corners of chapter 11's philosophy triangle, and this chapter placed the numeric one.
+
+## Check yourself
+
+1. v4 authored `amber-500` at L 0.769 and `blue-500` at L 0.623. Give the two reasons the same step number sits at different lightness, and name the Part-1 fact behind each.
+2. `text-white bg-blue-500` measures 3.76:1 (WCAG) and Lc −70 (APCA). Which meter passes, which fails, and why can Tailwind resolve the split neither way that chapter 17's semantic tier could?
+3. Name the two mechanisms this chapter says to steal from Tailwind's engine and the one naming decision to reject — one sentence each.
+
+## Further reading
+
+- [Tailwind CSS v4.0 — announcement](https://tailwindcss.com/blog/tailwindcss-v4) — "Modernized P3 color palette" (the rgb→oklch upgrade, in the authors' words) and the `@theme` / CSS-variable delivery model.
+- [Tailwind CSS docs — Colors](https://tailwindcss.com/docs/colors) — the OKLCH reference, the `--color-*` namespace, and the shift-click-for-nearest-hex fallback that tells you which value is authoritative.
+- [Tailwind CSS docs — Dark mode](https://tailwindcss.com/docs/dark-mode) — the `dark:` variant and hand-repicked example pairs; read it for the _absence_ of any contrast guarantee.
+- [`theme.css` — default theme](https://github.com/tailwindlabs/tailwindcss/blob/main/packages/tailwindcss/theme.css) — every `oklch()` constant this chapter measured; diff a family top to bottom and its lightness curve is in the numbers.
+- [Tailwind CSS v4.2.0 — release](https://github.com/tailwindlabs/tailwindcss/releases/tag/v4.2.0) — `mauve`, `olive`, `mist`, `taupe`: the four neutral-adjacent families that took the default from 22 to 26.
