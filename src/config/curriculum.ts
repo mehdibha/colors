@@ -158,7 +158,7 @@ export const curriculum: Part[] = [
         slug: 'radix-colors',
         number: 21,
         title: 'Radix Colors',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'tailwind',

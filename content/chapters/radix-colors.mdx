@@ -1,0 +1,108 @@
+---
+title: 'Radix Colors'
+description: "Radix's twelve steps are twelve UI jobs placed by hand in OKLCH — chapter 10's 'steps are jobs' at its source. Steal the job contract, the shared solid, the separately-designed dark scale, and the alpha layer; reject the one thing hand-tuning can't do — turn an arbitrary brand seed into a matching system."
+part: 3
+question: "Radix's 12 steps are already dotUI's job list — so what should the engine steal, and what can Radix's hand-tuning never give it?"
+---
+
+import { RadixJobBands } from '@/components/playgrounds/radix-job-bands'
+import { RadixStepNine } from '@/components/playgrounds/radix-step-nine'
+import { RadixLightDarkCurves } from '@/components/playgrounds/radix-light-dark-curves'
+import { RadixAlphaSurfaces } from '@/components/playgrounds/radix-alpha-surfaces'
+import { RadixScaleReader } from '@/components/playgrounds/radix-scale-reader'
+
+Chapter 10 opened Part 2 with a sentence it borrowed and never paid back: **steps are jobs**. That is Radix's documentation, almost verbatim — twelve slots, each engineered for one UI use — and dotUI's job list is a rename of it. Part 3 reads the greats the way an engineer reads a competitor's teardown: not to admire, but to decide what goes into the engine and what stays out. Radix is dotUI's most direct ancestor, so the reading is unusually concrete.
+
+The mechanism is smaller than it looks and more stubborn than you'd hope. A Radix scale is twelve colors placed by hand in a perceptual space, each pinned to one job and checked against a contrast target — chapter 11's third philosophy, **hand-tuned reference**, executed with unusual discipline. Then the whole thing is done again, from scratch, for dark. There is no seed, no generator, no formula that turns a brand color into a scale: the base scales, Radix says outright, "are not intended to be customised." That single fact is the whole case study — everything the contract buys, and the one thing chapter 14 needs that it can't give. The steal list is long; the reject is one sentence, and it's the reason dotUI needs an engine at all.
+
+## The twelve steps are the job list
+
+<RadixJobBands />
+
+The bands are the spine. Steps 1–2 are the two page backgrounds. Steps 3–5 are a component's own surface across three states — resting, hovered, active-or-selected. Steps 6–8 are borders — a subtle separator, an interactive edge that doubles as the focus ring, a hovered edge. Steps 9–10 are the solids. Steps 11–12 are the two text weights. A component author never asks "how blue is step 7"; they ask "do I need an interactive border," and the answer is always step 7, in every scale, forever. That invariance is the entire point — it is what lets one component style span thirty hues without a single per-hue exception, and it is the first thing the engine steals.
+
+The ends carry real contracts, not vibes. Radix guarantees step 11 clears **Lc 60** APCA and step 12 clears **Lc 90**, both measured on a step-2 background from the same scale. Run the meters on blue: light step 11 on step 2 reads 4.53:1 and Lc 68.9, step 12 reads 12.00:1 and Lc 94.7. The binding case is dark — `blueDark11` on `blueDark2` sits at Lc 60.1, the tuning run right up to the line and stopped. (This site's APCA port is version 0.0.98; Radix tuned against a slightly different revision, so treat the last digit as noise — the point is that the step is pinned to an APCA number, not that any one reading is canonical.)
+
+Then the honesty the engine has to notice: only steps 11–12 carry that promise. The borders don't. Blue's step 7 — the interactive border and focus ring — measures 1.70:1 against step 2; step 8, the hover border, 2.22:1. Both sit below the 3:1 that WCAG 1.4.11 asks of a non-text UI boundary. Radix tuned them to _look_ like borders, by eye, and let the ratio fall where perception put it — chapter 17's honest null case, that some tokens carry a contrast promise and some explicitly don't. Copy Radix's borders and you inherit that decision; want a 3:1 focus ring and you have to add a promise Radix didn't make.
+
+## Step 9, the shared solid
+
+One step is special. Radix calls step 9 the highest-chroma step — "the purest step, the step mixed with the least amount of white or black" — the most saturated color the hue reaches in gamut, chapter 6's tent at its peak. `blue9` is `#0090ff`, oklch(0.649 0.193 252), and it's the solid: filled buttons, checked boxes, the brand chip. It carries two properties worth stealing separately.
+
+<RadixStepNine />
+
+First, it is the one hex an accent scale carries _unchanged_ into dark mode. `blue9` is `#0090ff` in both `light.ts` and `dark.ts`, byte for byte — a solid sits at mid lightness holding its own background, so the room barely touches it (chapter 16 predicted exactly this: the solid survives the flip while the text step can't). Grays get no such pass — `slate9` is `#8b8d98` in light and `#696e77` in dark — because a gray solid has no chroma to anchor it and must be re-read against each room.
+
+Second, its label is chapter 8's orange-button fight, shipped as a default. On `#0090ff`, WCAG's max-ratio rule votes black — 6.43:1 beats white's 3.26:1, and white fails the 4.5 floor. APCA and most eyes vote white — Lc −64.6 clears the body-text bar where black's 44.9 doesn't. Radix ships **white**. That's a deliberate stand: the pairing sides with the reading meter over the auditable ratio, on every accent solid at once. It's the same posture chapter 8 argued and chapter 17 wired into `fg-on-accent` — WCAG 2 is the normative law, APCA predicts the reading, and a serious system reports both and lets perception break the tie. The engine must make the same call consciously, because whichever meter it trusts gets baked into every filled button.
+
+## Dark is a separate design, not a flip
+
+Chapter 16's whole thesis — dark mode is a second design — has its cleanest proof in Radix's source. The dark scales are separate exports with entirely different hex, not a transform of the light ones. Overlay the lightness curves and the flip falls apart on sight.
+
+<RadixLightDarkCurves />
+
+Read the failure precisely. Flip the light ramp's lightness (`L → 1 − L`, keeping each step's job) and steps 1–3 land at L 0.007, 0.018, 0.040 — three near-blacks that render as one color, collapsing app background, subtle background, and component surface into a single black. Radix's designed dark ramp spaces them at L 0.194, 0.213, 0.274. At the other end the flip tops text out at L 0.676 — too dark to read crisply on a dark field — where Radix lifts step 12 to L 0.907. And the quiet end spends differently: the light ramp steps from 2 to 3 by ΔL 0.022, the dark ramp by 0.062 — nearly three times the lightness per step, exactly where chapter 16 said the dark room needs it, because near-black is where the display and the eye resolve least.
+
+It isn't only lightness. The text step sheds chroma too: `blue11` goes from `#0d74ce` (oklch 0.556 0.162 252) in light to `#70b8ff` (oklch 0.764 0.126 249) in dark — up 0.21 in lightness, down a fifth in chroma, the anti-glow move from chapter 16. Two files, one shared solid, everything else re-tuned. No arithmetic on the light column contains that pattern; only a second designed pass does. Steal the _architecture_ — a separate generation per mode, with its own curves — not any transform.
+
+## Alpha ships the compositing layer
+
+Chapter 18's argument was that overlays and states want alpha, because a translucent color composites against whatever is under it instead of guessing. Radix ships that argument as product: every scale has an `…A` alpha variant, twelve translucent steps parallel to the twelve solid ones.
+
+<RadixAlphaSurfaces />
+
+The solid step is one fixed hex — tuned to read as a border on white (2.33:1 there), it blows to 8.09:1 on near-black: a hard bright line, not a subtle edge. The alpha step carries no fixed color; it borrows its surface, so a single token holds 2.0–2.6:1 across white, gray, and near-black alike, and over white it composites to the solid step exactly — which is how the two variants stay in sync. For anything painted over content you don't control — overlays, selection highlights, borders on arbitrary surfaces — alpha is the correct primitive, and Radix generates it for every step. There's a matching wide-gamut story — every scale also ships a P3 variant in `color(display-p3 …)` for the headroom chapter 6 mapped — plus black/white alpha overlays that "don't change across light and dark theme." All three are shipped answers to problems Part 2 only specified.
+
+## The reject: there is no front door
+
+Everything above is worth copying. Now the line the engine cannot cross, and it's structural. Chapter 14 defined the engine's front door: one brand hex in, a full system out — paste `#635bff`, get a scale. Radix has no such door. The base scales are a fixed hand-tuned reference set, and "not intended to be customised" is the library telling you the door is welded shut.
+
+There is a _separate_ in-browser tool — the custom-palette generator — but read what it does. It takes "a couple reference colors" and returns a scale that, in Radix's own words, is "based on the Radix Colors scales themselves." It doesn't build twelve steps from your color's OKLCH the way chapter 14's pipeline does; it finds the nearest existing Radix scale and bends it toward your input. (That nearest-match-and-interpolate mechanism is reconstructed from community write-ups, not spelled out in Radix's docs — treat the algorithm as directional.) The output is a fit to the reference, which is precisely why it can't be dotUI's engine: an arbitrary seed that lands between two reference scales gets snapped, not generated. Hand-tuning is a corpus, and you can only interpolate within a corpus you already have. Radix shows you the target the generation must hit; it can't be the generator.
+
+The semantic layer is the same shape of homework. Radix ships raw named scales — `blue`, `slate`, `red` — never `accent` or `danger`, and its own aliasing guide carries chapter 17's warning: one scale serves several meanings, `yellow` for both warning and pending, `red` for both danger and error. The engine owns that mapping; Radix leaves it open on purpose.
+
+## The lab
+
+One scale, both rooms, every variant, wired to read. Hover any step for its documented job, its OKLCH, and its live contract; toggle the room and watch every step re-tune, not invert; toggle alpha and the strip goes translucent over a checker. The flip-check line under each step reports where an `L → 1 − L` engine would have put it — and how far that is from what Radix actually shipped.
+
+<RadixScaleReader />
+
+Worth doing, in order:
+
+- **Land on step 9.** Light and dark are the same hex — the shared solid. Read the label split: white passes APCA where black fails, and Radix's shipped choice is white. The chapter-8 decision, live. Even here the flip-check is off by ~0.30 L: a mirror would move the one step that must stay put.
+- **Walk steps 1 → 3, then toggle to Dark.** The flip-check diverges hardest at the quiet end — the mirror crushes three surface steps into near-black; Radix's dark spaces them.
+- **Select step 11 in both rooms.** The text contract holds on both meters in light and dark, because the dark step was tuned against the dark background, not carried over.
+- **Select step 7.** The interactive border reads below 3:1 in both modes. Radix promised nothing there — so your engine has to decide that on purpose, not inherit it by accident.
+- **Toggle Alpha.** The `…A` steps are what Radix composites to reach the solids over the theme's own background. Nowhere does a control ask for a seed — that absence _is_ the reject.
+
+## What the engine should steal — and reject
+
+Radix is the reference dotUI's job list already descends from, so most of this is ratification, not adoption.
+
+**Steal, stated as commitments:**
+
+1. **The twelve-job contract, verbatim.** Two backgrounds, three component fills, three borders, two solids, two text steps — with contracts at the ends: step 9 the chroma peak and solid, steps 11/12 hitting Lc 60/90 on step 2, borders explicitly below text contrast. dotUI already uses this; hold the exact band boundaries as a hard invariant so one component style spans every hue.
+2. **Anchor the scale at the solid.** Step 9 is placed first as the in-gamut chroma peak (chapter 6), and the ramp is built around it. The generator should treat the solid as a fixed point, not one more sample of a lightness curve — and pair it with a label chosen by a _stated_ meter, not a silent max-ratio default.
+3. **A per-step contrast contract, stated in both meters.** Radix guarantees the two text steps in APCA against step 2. Adopt the target, report WCAG beside it (chapter 8), and — Radix's honest gap — decide _explicitly_ whether borders and focus rings owe 3:1, because Radix's don't.
+4. **Dark as a second generation pass.** Separate lightness skeleton, separate chroma budgets, separate per-hue moves — never `L → 1 − L`. Two files, shared solid, everything else re-tuned, wider steps at the dark quiet end. Radix's `dark.ts` is the existence proof that this is worth the cost.
+5. **Alpha (and P3) as first-class output.** Emit an `…A` twin for every step, composited to match the solids over the theme background, plus a P3 variant for wide-gamut headroom. The compositing promise is shippable, not aspirational.
+
+**Reject:**
+
+6. **Hand-tuning as the front door.** Radix cannot answer chapter 14: no arbitrary seed produces a from-scratch scale, and the custom tool interpolates within the reference corpus rather than generating from your color. dotUI exists _for_ that door — so it takes Radix's contract and targets as the spec its generator must hit, and rejects Radix's method of hitting them by hand. Steal the destination; build your own road.
+
+Left open, on purpose: the semantic aliasing on top (chapter 17, and Radix leaves it to you); the full state-and-alpha matrix (chapter 18); and how Tailwind makes the opposite bet — ship primitives, no semantic tier (chapter 22).
+
+## Check yourself
+
+1. Radix ships `blue9` as `#0090ff` in both light and dark, but `blue11` as `#0d74ce` in light and `#70b8ff` in dark. Why does the solid survive the room change when the text step can't — and which step does the engine treat as the fixed point?
+2. `blue7` is the interactive border and focus ring, and it measures 1.70:1 against `blue2`. Is that a bug in Radix, a bug in your engine if you copy it, both, or neither? What did Radix actually promise, and where?
+3. Radix's custom-palette tool takes a brand color and returns a scale — so why isn't it chapter 14's front door? Name the difference between what it does and what dotUI's generator must do.
+
+## Further reading
+
+- [Radix Colors — Understanding the scale](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale) — the twelve-step job table, the "purest step" definition of step 9, and the Lc 60 / Lc 90 guarantees, in Radix's own words.
+- [`radix-ui/colors` — `light.ts` / `dark.ts`](https://github.com/radix-ui/colors/tree/main/src) — every hex in this chapter; diff `blue` against `blueDark` and the "dark is a second design" section is the diff, with step 9 the one line that matches.
+- [Radix Colors — Composing a palette](https://www.radix-ui.com/colors/docs/palette-composition/composing-a-palette) — "not intended to be customised," plus the aliasing-to-roles homework and the multiple-semantics warning.
+- [Radix Colors — Custom palettes](https://www.radix-ui.com/colors/docs/overview/custom-palettes) — the seed-to-reference generator, and the sentence ("based on the Radix Colors scales themselves") that makes it a fit, not a front door.
+- [Radix Colors — Scales](https://www.radix-ui.com/colors/docs/palette-composition/scales) — the ~30 scales and the four variants (base, alpha, dark, dark-alpha) plus P3, that this chapter sampled one hue of.
