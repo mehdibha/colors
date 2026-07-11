@@ -170,7 +170,7 @@ export const curriculum: Part[] = [
         slug: 'material-hct',
         number: 23,
         title: 'Material 3 & HCT',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'spectrum-leonardo',

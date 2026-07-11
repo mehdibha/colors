@@ -1,0 +1,116 @@
+---
+title: 'Material 3 & HCT'
+description: 'Material ships a color system that never runs a contrast check on the pairs it hands you — it constructs every pair to pass. The trick is one number, Tone, that equals CIE lightness and therefore equals contrast. This is what a web engine already living in OKLCH should steal from HCT, and why it can leave CAM16 behind.'
+part: 3
+question: 'Material ships thousands of color pairs and audits none of them — how does every pair pass?'
+---
+
+import { ToneIsContrast } from '@/components/playgrounds/tone-is-contrast'
+import { ToneVersusOklchL } from '@/components/playgrounds/tone-versus-oklch-l'
+import { TonalPaletteStrip } from '@/components/playgrounds/tonal-palette-strip'
+import { SchemePairDeltas } from '@/components/playgrounds/scheme-pair-deltas'
+import { HctChromaQuirk } from '@/components/playgrounds/hct-chroma-quirk'
+import { TonalPaletteRoleLab } from '@/components/playgrounds/tonal-palette-role-lab'
+
+Chapter 17 left one job unfinished on purpose: pairing. Every surface token owes its consumers a text partner, and the naive way to keep that promise is to generate the whole system and then audit it — for every surface-and-text pair, run a contrast check; where a pair fails, nudge a color and check again. The audit runs downstream of the generator, so every fix is a patch: move one color to rescue one pair, and the ramp drifts off whatever curve produced it.
+
+Material 3 inverts the order. It never audits a pair, because it constructs every pair to pass. The whole system turns on a single number — **Tone** — chosen so that contrast is a property of the picks, not a test run against them afterward. This chapter is about what that number buys, and, for an engine already living in OKLCH, exactly which parts of Material's machinery are worth the freight.
+
+## Tone is lightness, and lightness is contrast
+
+HCT is the color space Google built for Material 3. Its README gives it in one line — "A new color space … based on CAM16 x L\*, that accounts for viewing conditions" — its three axes being hue, chroma, and tone. Read that as a fusion. **Hue** and **chroma** come from CAM16, a color-appearance model that adjusts for viewing conditions — the heavy, perceptually careful half. **Tone** is plain CIE `L*`, the `L*a*b*` lightness from chapter 5, running 0 to 100.
+
+Two pedigrees in one space because they are good at different jobs. CAM16 predicts _appearance_, so Material trusts it for hue and colorfulness. `L*` predicts _lightness_, and lightness is what drives contrast. HCT's own class doc says so outright — "Using L\* creates a link between the color system, contrast, and thus accessibility" — and the contrast module makes it mechanical: "When linearized to match human perception, Y becomes HCT's tone and `L*a*b*`'s `L*`." Tone is `L*` is a function of luminance Y, and WCAG contrast (chapter 8) is a ratio of luminances. So a gap in Tone is a gap in luminance is a contrast ratio. Move Tone and you move contrast; nothing else in HCT touches it.
+
+That is the lever. Two neutral tones far enough apart are guaranteed to contrast, whatever their hue or chroma:
+
+<ToneIsContrast />
+
+This is chapter 10's tone arithmetic — "a big enough tone gap **is** the contrast proof" — promoted from a property you can exploit to the _only_ axis the system spends on accessibility. A Tone gap near 40 clears 3:1 and a gap near 50 clears 4.5:1 — approximate, and tightest at the _extremes_, not the midtones: a light 100/50 pair reads about 4.48, a hair under 4.5, while a mid 75/25 pair has margin to spare. The live meters read the real number. Material's docs cite that 40/50 rule of thumb; the library actually solves for target ratios continuously rather than hard-coding it, so treat it as an accurate approximation, not a spec constant.
+
+## The lever is L\*, and OKLCH L is not quite L\*
+
+dotUI computes in OKLCH, whose `L` is also a perceptual lightness monotonic in luminance — so it can carry contrast exactly the way Tone does. But OKLCH `L` and CIE `L*` are different rulers, and the difference is the size of the recalibration you owe:
+
+<ToneVersusOklchL />
+
+An OKLCH gray at `L` 0.50 measures `L*` 42, not 50; through the dark and mid range OKLCH `L` sits eight to thirteen points above the `L*` it names. Both are monotonic in luminance, so they rank contrast identically and either works as the lever — they just number the axis differently. That is the first concrete engine warning. Material's "gap 50 → 4.5:1" is an `L*` fact; pasted as a constant into an OKLCH-`L` pipeline it means something else, because 50 OKLCH-`L` points and 50 `L*` points span different luminance. Steal the method; re-derive the number in your own space. (Every other swatch in this chapter solves the reverse — OKLCH `L` chosen so its `L*` equals Material's Tone — precisely so the tone numbers stay honest.)
+
+## Tonal palettes, and pairs built by delta
+
+From a seed, Material derives **tonal palettes**: "a convenience class for retrieving colors that are constant in hue and chroma, but vary in tone." One hue, one chroma, Tone sweeping 0 to 100. A dynamic scheme derives six — primary, secondary, tertiary, neutral, neutral-variant, error. This is chapter 11's lightness-anchored philosophy at its purest, and chapter 15's tinted neutrals fall out for free: a low-chroma tonal palette _is_ a warm-gray ramp.
+
+<TonalPaletteStrip />
+
+The palette is not the theme. **Roles** are, and a role is a Tone _selected_ from a palette. In the baseline light scheme, read straight from `scheme.ts`: `primary` is Tone 40, `on-primary` is Tone 100, `primary-container` is Tone 90, `on-primary-container` is Tone 10. Every `on-` role is the readable partner of the surface it names — and here the lever pays off. Material's docs promise "any color roles starting with `on-` are guaranteed to have sufficient contrast," a minimum of 3:1, and the guarantee is _structural_: it lives in the Tone gap between the pair, not in a measurement of the generated colors.
+
+<SchemePairDeltas />
+
+Look at the deltas. `primary` 40 to `on-primary` 100 is a gap of 60. `container` 90 to `on-container` 10 is 80. `surface` 99 to `on-surface` 10 is 89. Every shipped pair clears a Tone gap of 50 or more, so every pair clears its target before a hex exists. This is chapter 17's pairing promise with the audit deleted: `on-primary` is not black-or-white chosen to beat a ratio, it is Tone 100 chosen because 100 minus 40 cannot fail. The generator subtracts; it never measures.
+
+## One palette, re-picked per room
+
+Toggle that demo between light and dark. The tonal palette does not move — same hue, same chroma, same columns. Only the _Tone the role reads_ changes: `primary` 40 becomes 80, `container` 90 becomes 30, `surface` 99 becomes 10. Light-to-dark flips the index, never the palette.
+
+That is chapter 16's verdict — "dark mode is a second design" — wearing chapter 17's mechanism, mode aliasing, at the _semantic_ tier. Chapter 17 gave two homes for per-mode values: redefine the primitives (Radix's `dark.ts`) or re-pick at the semantic tier. Material is the clean second case — the primitives (the tonal palettes) are invariant; the role selects a different Tone per scheme. And the re-pick is asymmetric by design — 40 goes to 80, never to 60 — because the dark scheme is a set of designed picks, not an arithmetic mirror of light.
+
+## Contrast as a knob, not a fork
+
+Material also makes accessibility strength a first-class axis. `DynamicScheme.contrastLevel` is a scalar: "Value from -1 to 1. -1 represents minimum contrast, 0 represents standard (i.e. the design as spec'd), and 1 represents maximum contrast." The four shipped levels are reduced (−1), standard (0), medium (0.5), and high (1.0), with standard targeting WCAG AA and high targeting AAA. (WCAG 2 is the normative standard those targets are named against; APCA, chapter 8, still isn't one.) Because contrast is Tone arithmetic, raising the level is a single operation — push each pair's Tones apart, uniformly. No re-audit, no patch. This is chapter 9's `prefers-contrast` promoted from a media query you react to into a dial the engine owns, and the lab below puts it in your hand.
+
+## Where HCT costs more than it returns
+
+The case so far is to steal everything. Now the reject. HCT's Tone half is `L*` — cheap, closed-form, exactly the lever a web engine wants. Its hue-and-chroma half is CAM16, and that half is expensive: an appearance model with viewing-condition parameters, and a chroma axis that is not a free knob. The source is candid — "chroma may decrease because chroma has a different maximum for any given hue and tone." Ask a tonal palette for one fixed chroma across its Tones and the gamut clamps it, differently for every hue:
+
+<HctChromaQuirk />
+
+You have seen this shape: chapter 6's tent, chapter 12's chroma curve — the maximum chroma is a function of lightness _and_ hue at once — and it falls straight out of plain OKLCH with no CAM16 anywhere. Blue holds chroma through the midtones and collapses toward the light end; yellow climbs the whole way, because its ceiling is highest exactly where blue's is lowest. Same requested chroma, two unrelated delivered curves. That is the argument for the reject. The one truth HCT's quirk teaches — chroma isn't free, its ceiling moves with hue and tone — OKLCH already tells you, in a closed-form transform of XYZ, with no appearance model and no iterative gamut solve. For a design system rendered on a defined sRGB or P3 display, chapter 5's three honest knobs get you the whole tone lever without the CAM16 freight. What you want from Material is not its color space. It is its _policy_.
+
+## The lab
+
+Everything above, wired to one seed. Pick a brand color; the lab builds two tonal palettes from it — an accent palette and a low-chroma neutral — then resolves the Material roles by selecting Tones per scheme. Flip light and dark to watch the picks move while the palettes hold. Turn the contrast dial to watch every pair's Tone gap widen at once. The meter table proves the point Material's engine never has to check: each pair's contrast is a consequence of its Tone delta, on both instruments, by construction.
+
+Honest note, in the code and here: this lab keeps **Tone exact** — every swatch is solved so its CIE `L*` equals the requested Tone, the axis that carries the whole contrast argument — but it approximates HCT's hue and chroma in **OKLCH**, not CAM16. It is a faithful model of the _policy_, not a reimplementation of the _space_. That gap is exactly the one this chapter argues a web engine should accept.
+
+<TonalPaletteRoleLab />
+
+Worth doing, in order:
+
+- **Read standard, light.** Every pair passes WCAG and APCA, and no pair was measured to get there — each delta was picked to clear its target. Four pairs, zero audits.
+- **Flip to dark.** Watch the palette strip hold its columns while the role markers jump to new tones — the invariant-palette, moving-index re-pick from two sections up, now with both meters live beside it.
+- **Turn the dial to high.** Every Tone gap widens together and every ratio climbs. One scalar reshaped every pair — the contrast axis Material owns and most engines leave to a media query.
+- **Change the seed to the red or the near-neutral.** The Tone picks are identical; only the hue and chroma under them change. Accessibility rode on Tone the whole time, so it survives the hue swap untouched.
+
+## What the engine should steal — and reject
+
+dotUI lives in OKLCH already, and chapters 10 through 17 built a system whose spine — jobs, an eased lightness skeleton, tinted neutrals, semantic tokens with `on-` partners — is structurally the same as Material's. Material's lesson is not a new color space; it is a discipline for the one it shares with you.
+
+Steal:
+
+1. **Make Tone the single accessibility lever, and Tone is `L*`.** Resolve every contrast decision as a gap in lightness — OKLCH `L` is your version. But recalibrate: OKLCH `L` and `L*` diverge by up to thirteen points, so derive your own delta thresholds against OKLCH `L` rather than importing Material's `L*`-based 40 and 50. This is chapter 10's tone arithmetic made into a rule, not an observation.
+2. **Construct pairs by delta; do not audit them.** Every `on-` and container partner is a Tone offset chosen to clear the target before generation — and report _both_ meters (chapter 8), because a WCAG-passing delta over-credits dark backgrounds (chapter 16) and APCA catches it. Keep the WCAG floor and the APCA target as the _design_ of the offset, computed once, never a post-hoc check that patches the ramp.
+3. **Re-pick per mode; keep the primitives invariant.** Light, dark, and high-contrast are different Tone selections against the same palette (chapter 17's second architecture). The picks are asymmetric and designed (chapter 16), never a mirror.
+4. **Expose contrast as a scalar axis, fed by a seed.** One `contrastLevel`-style dial that widens every pair's Tone gap at once turns chapter 9's `prefers-contrast` into an engine feature instead of a special case. And seed → a small set of tonal palettes → roles is chapter 14's front door at OS scale; the neutral / neutral-variant split gives chapter 15's tinted neutrals for free.
+
+Reject:
+
+5. **Do not adopt HCT the space.** CAM16's viewing-condition machinery and its per-hue-per-tone chroma solving are heavier than a display-targeted engine needs, and OKLCH's closed-form transform already surfaces the one hard truth (chapters 6 and 12) that the chroma quirk is trying to teach.
+6. **Do not ship fixed-chroma tonal ramps.** "Chroma has a different maximum for any given hue and tone" — a flat request clamps silently at both ends and at different heights per hue. Draw the chroma curve under the tent (chapter 12) instead of hugging the wall.
+
+Left open, on purpose: Material's scheme _variants_ (tonal-spot, vibrant, expressive) and its secondary/tertiary expansion are a seed-policy question that belongs with chapter 14's front door; Spectrum and Leonardo's contrast-_anchored_ generation — the philosophy Material inverts by anchoring lightness — is chapter 24; Radix and Tailwind are the neighboring case studies, 21 and 22.
+
+## Check yourself
+
+1. Material ships an `on-primary` color and never measures its contrast against `primary`. What single fact about Tone makes that safe, and what are the two roles' baseline Tones in the light scheme?
+2. Switching a Material theme from light to dark leaves the tonal palettes untouched but changes what each role displays. What exactly changes, and which chapter-17 architecture is this — redefine the primitives, or re-pick at the semantic tier?
+3. Your engine computes in OKLCH and you want to reuse Material's "tone gap 50 → 4.5:1" as a constant. Why is pasting 50 as an OKLCH-`L` gap a latent bug, and what must you do instead?
+
+## Further reading
+
+- [material-color-utilities — README](https://github.com/material-foundation/material-color-utilities) — the one-line HCT definition ("CAM16 x L\*, that accounts for viewing conditions") and the reference implementation behind every number here.
+- [HCT — class reference (MaterialKolor mirror)](https://docs.materialkolor.com/material-color-utilities/com.materialkolor.hct/-hct/index.html) — the Kdoc that ties Tone to `L*` and accessibility ("Using L\* creates a link between the color system, contrast, and thus accessibility") and documents the per-hue-per-tone chroma ceiling.
+- [`scheme.ts` — baseline role tones](https://raw.githubusercontent.com/material-foundation/material-color-utilities/main/typescript/scheme/scheme.ts) — the exact light and dark Tone assignments; diff the two lists and the mode re-pick is the diff.
+- [`tonal_palette.ts`](https://raw.githubusercontent.com/material-foundation/material-color-utilities/main/typescript/palettes/tonal_palette.ts) — the "constant in hue and chroma, but vary in tone" class, and the per-hue-per-tone chroma caveat that makes the flat ramp clamp.
+- [`contrast.ts`](https://raw.githubusercontent.com/material-foundation/material-color-utilities/main/typescript/contrast/contrast.ts) — where Tone, `L*`, and luminance Y are the same axis, and `lighter`/`darker` solve a Tone for a target ratio.
+- [`dynamic_scheme.ts` — contrastLevel](https://raw.githubusercontent.com/material-foundation/material-color-utilities/main/typescript/dynamiccolor/dynamic_scheme.ts) — the −1 to 1 contrast axis, standard = AA and high = AAA.
+- [Material 3 — Color roles](https://m3.material.io/styles/color/roles) — the `on-` contrast guarantee ("guaranteed to have sufficient contrast") stated as product policy.
