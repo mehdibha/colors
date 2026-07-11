@@ -19,6 +19,8 @@ export default defineConfig({
       'react-aria',
       'react-aria-components/ToggleButton',
       'react-aria-components/ToggleButtonGroup',
+      'react-aria-components/Switch',
+      'react-aria-components/Label',
     ],
   },
   resolve: {
