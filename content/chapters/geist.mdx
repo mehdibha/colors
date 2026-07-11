@@ -1,0 +1,95 @@
+---
+title: 'Vercel Geist'
+description: "The capstone. Geist is Vercel's color: ten Radix-style job scales, a translucent alpha twin, a primary blue parked exactly at the meter crossover, and a hand-designed dark. Almost every decision this course argued for, embodied as a fixed destination — which is precisely what a seed-driven engine can never be. Read the whole course back through Geist and the difference between a destination and a road becomes the rewrite spec."
+part: 3
+question: "Geist is one brand's hand-tuned destination — what does a seed-driven engine steal from it, and what can it never copy?"
+---
+
+import { GeistJobLadder } from '@/components/playgrounds/geist-job-ladder'
+import { GeistAlphaComposite } from '@/components/playgrounds/geist-alpha-composite'
+import { GeistAccentMeters } from '@/components/playgrounds/geist-accent-meters'
+import { DesignedVsGenerated } from '@/components/playgrounds/designed-vs-generated'
+import { EngineScorecard } from '@/components/playgrounds/engine-scorecard'
+
+Part 1 taught you to see: the same hex is two colors in two surrounds, OKLCH gives three honest knobs, the screen has an edge, two meters disagree about a button. Part 2 turned seeing into machinery: twelve jobs, three curves, a seed policy, tinted neutrals, a second design for the dark, a token grammar, states and alpha. Part 3 holds that machinery up to systems that shipped and asks what survives contact. This is the last of them, and it is the one that matters most for the engine — because Geist is what dotUI's output is trying to be, and is built the opposite way.
+
+Geist is Vercel's design system — "the colors, typography, materials, layout, and React components behind Vercel's products" — and its color layer is billed in five words: "A high contrast, accessible color system." Nearly every decision this course spent Part 2 arguing over is already made in Geist, correctly, by hand. That is exactly why it's the finale and not a victory lap. Geist is a **destination**: one brand, tuned once, sitting still. dotUI is a **road**: a function that must reach _any_ brand's destination from a seed it has never seen. That gap is the whole chapter. Almost everything Geist does, the engine should steal. Exactly one thing Geist has, no generator can copy — because it isn't a decision at all.
+
+## Ten steps, ten jobs
+
+Start under the hood, where chapter 10 started. Geist's color is ten scales: `backgrounds` (two values), `gray`, its translucent twin `gray-alpha`, and seven accent hues — blue, red, amber, green, teal, purple, pink. Every non-background scale runs exactly ten steps, numbered 100 to 1000, and each number is a _job_, not a lightness index — chapter 10's "steps are jobs," made literal in the naming: 100 default background, 200 hover, 300 active, 400 default border, 500 hover border, 600 active border, 700 solid fill, 800 solid hover, 900 secondary text, 1000 primary text. That step-to-job map is Vercel's own, spelled out in `design.md`.
+
+<GeistJobLadder />
+
+The shape is Radix's — chapter 21's model: backgrounds, then component backgrounds, then borders, then solid fills, then text, plus a translucent alpha companion. But it is Radix-_style_, not Radix-_derived_. Vercel's docs make no Radix claim anywhere, and the structure differs on two counts: Geist runs 10 steps (100–1000) where Radix runs 12 (1–12), and Radix ships an alpha twin for _every_ scale where Geist documents one, `gray-alpha`. Same philosophy, independent build. The step count is a formatting choice, not a difference in kind — both put the accessible text steps at the far end, both make the contract live between neighbours.
+
+The proof that these are jobs and not a lightness ramp is a blemish Geist ships on purpose. In the light gray scale, step 400 — the default border — is a hair _lighter_ than step 300, the active background (`#eaeaea` over `#e6e6e6`, OKLCH L 93.7% over 92.5%). A monotonic ramp forbids that. A ramp of jobs allows it, because 400 is tuned to read as a border against the surfaces it separates, not to be the next rung down. Chapter 10 said the contract is between neighbours doing specific work; Geist would rather break monotonicity than break the border. Hold that thought — the generator will have to decide whether it's allowed the same freedom.
+
+## Alpha is how it travels
+
+The `gray-alpha` twin is chapter 18's composability lesson as an engineering commitment. A solid gray divider is tuned for one background — its own. Lift it onto a colored surface and it becomes a mismatched band, because its lightness was chosen against white and nothing recomputed. A translucent gray composites onto whatever is underneath.
+
+<GeistAlphaComposite />
+
+The division of labor is the whole lesson. Solid `gray-*` is for the things that must hold their own contrast regardless of background — text, opaque fills. Translucent `gray-alpha-*` is for the things that must _blend_ — borders, dividers, overlays, hover states. Radix states the same rationale outright — "Each scale has a matching alpha color variant" — for exactly the components that need to blend into colored backgrounds. In the demo the alpha divider is tuned to land on solid `gray-400` over the default white surface, so it reads identical on the common case and keeps working on every other one. That is the trick — alpha is not a style, it is how a fixed value survives an unknown background. This is chapter 15's restraint and chapter 18's composability in one scale.
+
+## High contrast, on purpose
+
+"High contrast, accessible" is a claim, and chapter 8 gave you two instruments to audit it. Geist's primary interactive blue is `blue-700`, `#006bff`. Step across its neighbours and watch what the label decision does.
+
+<GeistAccentMeters />
+
+At `blue-600` (`#48aeff`, lighter) black wins decisively — 8.77:1 to white's 2.39:1, APCA agreeing. At `blue-800` (`#0059ec`, darker) white wins on both. `blue-700` sits on the seam: WCAG scores white and black within a hundredth of each other — 4.62:1 versus 4.55:1, right on chapter 8's Y ≈ 0.18 tie point — and APCA breaks the tie decisively for white, Lc −76.5 against black's +33.1. This is the orange-button fight from chapter 8, except Geist _won_ it: it parked the primary blue at the one lightness where a white label is defensible on both meters at once. The landing slot (chapter 14) and the pairing decision (chapter 17) resolve here the chapter-8 way — WCAG 2 is the enforceable floor, APCA predicts the read — decided by hand, per color, once. Note too that Geist authors these in OKLCH and ships a Display-P3 `oklch()` alongside every sRGB hex — "P3 colors are used on supported browsers and displays" — chapter 6's gamut headroom, gated by capability, not assumed.
+
+## Designed vs generated
+
+Here is the spine, and two facts frame it. Geist has _no seed_ — the palette is complete in itself, one brand, hand-authored. And Geist ships light and dark from two separate files (the dark values live at `design.dark.md`) under identical token names, the same 100–1000 job structure in both: chapter 16's verdict wearing Vercel's clothes — dark mode is a second design, not a flip. The names are the contract; the values are two hand-tuned passes.
+
+Now feed Geist's `blue-700` — `#006bff` — into an engine as a _seed_ (chapter 14) and let it generate a full ramp: a monotone lightness skeleton (chapter 11), a chroma bell clamped to sRGB (chapter 12), constant hue (chapter 13). Then change the seed.
+
+<DesignedVsGenerated />
+
+First, on the Vercel-blue seed the engine's ramp lands _near_ Geist's but not _on_ it — ΔEOK ≈ 0.033 at the solid, a designed value and a generated one, two tunings of the same target. And the engine can't reproduce Geist's authorship. Read from Geist's authored Display-P3 `oklch()` values — not the sRGB hex, which lands about two degrees higher at the solid (260.1°) — the blue hue _drifts_ by hand: 251.6° at the top, dipping to 245.1° at the border step, swinging to 258.2° at the solid, settling at 254.3° for the ink. Its lightness is non-monotone too — step 900 sits lighter than step 800, because 900 is a color chosen for a job, not a rung on a descent. The plot draws both: Geist's hue wandering where the engine's holds flat, Geist's ladder dipping where the engine's descends. A generator that holds hue constant and lightness monotone (as most do, and should) cannot draw those curves, and mostly shouldn't try.
+
+Second — the capstone — switch the seed to violet or emerald and the engine follows instantly, into a region where _no Geist ramp exists_. That is not Geist failing; it is the definition of Geist. A designed system ships one destination; the engine ships the road.
+
+## The lab
+
+Now put the whole course on one page: Geist's hand-designed system against dotUI's generator, decision by decision, from working space down to output. The receipt at the top holds Geist's "accessible" claim to both meters, live. Each row carries a verdict — steal it, hold it as the one irreducible difference, or fix it where dotUI today misses its own target. Filter to the punch list and you're reading the rewrite's to-do; read it top to bottom and you're reading the rewrite spec.
+
+<EngineScorecard />
+
+Worth doing, in order:
+
+- **Read the receipt.** `blue-700` `#006bff` with a white label — WCAG a near-tie leaning white (4.62 vs 4.55), APCA decisively white (Lc −76.5 vs 33.1). Both land on white. Geist's "accessible" claim, verified, not asserted.
+- **Filter to _Steal_.** OKLCH working space, job scale, hand-shaped curves, restrained neutrals, the alpha companion, the accessible-by-design pairing — eight rows the engine adopts wholesale. Geist proves, as a shipped artifact, that a system built on these decisions holds.
+- **Read the one _Core_ row.** The seed. Geist has none; dotUI is nothing but one. This is the difference in _kind_, not a gap to close.
+- **Filter to _Fix_.** No P3 variant (chapter 6), pairing scored max-WCAG-only (chapters 8, 17), dark as a reversed light list (chapter 16), alpha companion still owed (chapter 18). That column is the reason this whole site exists.
+
+## What the engine should steal — and reject
+
+This is the last chapter, so the reading is the whole course's, consolidated. The site is done, per this project's charter, when the maintainer can write the color-engine rewrite spec — and the scorecard is that spec compressed. Expanded into commitments:
+
+1. **Steal the substrate.** Author in OKLCH; ship sRGB hex with an `oklch()` P3 upgrade gated by the display (chapters 5–6). Geist proves the two-format ship is production-real. The engine gamut-maps with `clampChroma` today but ships no P3 variant — a gap on the Fix list.
+2. **Steal the job scale.** Ten steps or twelve, the rungs are jobs and the contract lives between neighbours — and the ramp is allowed to run non-monotone where a job demands it (chapter 10). The border step is a border, not a rung. dotUI's 11-step ramp (50–950) already is this; keep it.
+3. **Steal the alpha commitment.** Ship a translucent neutral companion for anything that must ride an unknown surface — borders, dividers, overlays, hover — beside the solid neutrals that must hold contrast (chapter 18). The engine's alpha is still an IOU; Geist shows the shape of the payment.
+4. **Steal restraint as a parameter.** Near-neutral grays (`#171717` ink), a tight accent set, tint kept below chapter 15's threshold. Geist bakes restraint into the design; an engine that _can_ generate a lurid ramp from any seed must still default to it — because a generator's default is somebody else's brand.
+5. **Steal the dual-meter pairing.** Geist placed `blue-700` where white wins on both meters. The engine must _generate_ that guarantee: enforce the WCAG 4.5:1 floor at generation and report the APCA Lc, so the tie-point colors resolve as a visible engine decision — not the silent max-WCAG default it ships today (chapter 17's pairing gap). Partners should be drawn from the ramp, not only black and white.
+6. **Steal the separate dark.** Two designs, one token contract (chapter 16). This is where dotUI diverges most today — it reverses the light list — and closing that gap is the largest single line item in the rewrite.
+7. **Reject the fixed destination.** Geist has no seed and needs none; it is complete because it serves one brand forever. dotUI's seed is the entire reason it exists: it must reach violet, emerald, and a brand nobody has chosen yet, from three numbers in. The engine can never copy Geist's _authorship_ — the per-step hue drift, the non-monotone ladder placed by eye, the color-by-color meter call — and it shouldn't fake them. It should reach the same _quality bar_ — the same contrast guarantees, the same restraint, the same job contract — from a rule that runs on a seed nobody has seen. Its job is not to _be_ Geist. It is to be able to _generate_ Geist — and then generate the one Geist never will.
+
+That is the loop this course was built to close. Steal every Steal row as an invariant, clear every Fix row as a task, and hold the one Core row as the thing that makes dotUI a different kind of artifact than Geist — a road to every destination, not one more destination.
+
+## Check yourself
+
+1. Geist ships 10 steps (100–1000), Radix ships 12 (1–12), and in Geist's light gray, step 400 (default border) is lighter than step 300 (active background). Why is that blip not a bug, and which chapter-10 idea does it prove?
+2. Geist's `gray-alpha` and its solid `gray` hold different promises. When must a component reach for the alpha companion, and what does the solid gray guarantee that the alpha one structurally can't?
+3. Geist reached its palette by hand for one brand; dotUI must reach any brand's by function. Name one thing the generator _reaches for free_ that Geist reached by hand — and the one thing Geist has that no generator output can ever contain.
+
+## Further reading
+
+- [Geist — Colors](https://vercel.com/geist/colors) — the ten scales, the 100–1000 step jobs, the P3 note, and the "high contrast, accessible" self-description this chapter audited, from the source.
+- [Vercel `design.md`](https://vercel.com/design.md) — the machine-readable palette: every sRGB hex with its Display-P3 `oklch()` twin, the step-to-job map, the `gray-alpha` companion, and the "minimal and high-contrast … restrained color" statement.
+- [Vercel `design.dark.md`](https://vercel.com/design.dark.md) — the dark theme as a separate file of hand-tuned values under the same token names: chapter 16's second design, made literal. Diff it against `design.md`.
+- [Radix Colors](https://www.radix-ui.com/colors) — the 12-step job model and per-scale alpha variant Geist echoes on a tighter grid; the kinship this chapter draws, and chapter 21's subject.
+- [Geist — Introduction](https://vercel.com/geist/introduction) — what Geist is and what it is for, in Vercel's own scope statement.

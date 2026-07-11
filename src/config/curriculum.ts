@@ -182,7 +182,7 @@ export const curriculum: Part[] = [
         slug: 'geist',
         number: 25,
         title: 'Vercel Geist',
-        status: 'planned',
+        status: 'published',
       },
     ],
   },
