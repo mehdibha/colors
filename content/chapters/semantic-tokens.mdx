@@ -1,0 +1,111 @@
+---
+title: 'Semantic tokens: tiers, naming, pairing'
+description: 'Nobody ships a ramp — components consume names, and every name is a promise. How token systems tier their vocabulary, what a good name grammar looks like, why every surface token needs a guaranteed text partner, and how one name serves light, dark, and high contrast.'
+part: 2
+question: 'Repoint accent and the whole UI follows — which promises break, and what catches them?'
+---
+
+import { NumericVsSemantic } from '@/components/playgrounds/numeric-vs-semantic'
+import { PairingFlip } from '@/components/playgrounds/pairing-flip'
+import { ComponentTierFirewall } from '@/components/playgrounds/component-tier-firewall'
+import { ModeAliasTable } from '@/components/playgrounds/mode-alias-table'
+import { TokenCountLineup } from '@/components/playgrounds/token-count-lineup'
+import { TokenWiringPlayground } from '@/components/playgrounds/token-wiring-playground'
+
+Chapter 1 planted a sentence and left it: tokens are promises about perception. Seven chapters of Part 2 have since built the machinery that could keep such promises — job slots, three curves, a seed policy, tinted neutrals, a dark pass. But none of that is what a component sees. A component sees `bg-accent`. The ramps are the factory; the tokens are the product — the API through which every developer, every component, and every AI codegen tool consumes your color system. This chapter designs that API: how many layers, what grammar names them, what each name guarantees, and what happens to one name across three rooms.
+
+## Three tiers
+
+The consensus architecture is a chain. At the bottom, **primitives**: `blue-900`, a value with a name and no opinion about where it goes. In the middle, **semantic tokens**: `accent`, `fg-muted`, `border-field` — names that state a role, resolved by pointing at a primitive. On top, optionally, **component tokens**: `tooltip`, `sidebar` — names scoped to one component, resolved by pointing at a semantic token or a primitive. A button's pixel is the end of a wire: `#4992dd ← --blue-500 ← accent ← the button`.
+
+This layering is standard enough to have a draft standard. The Design Tokens Community Group's Format Module gives tokens an interchange grammar — a token is a JSON object with a `$value`, an optional `$type`, and aliases that reference other tokens by path in curly braces, `"$value": "{color.blue.500}"` — so the same chain can travel between Figma, code, and whatever tool comes next. Status stated plainly: it is a draft Community Group report, not a W3C standard; useful as shared vocabulary today, not as a compliance target.
+
+The two lower tiers are uncontroversial — every serious system has primitives and roles, whatever it calls them. The component tier is the judgment call. Here's what it buys:
+
+<ComponentTierFirewall />
+
+A component token is a firewall. While `popover` merely shares `card`'s value, restyling cards restyles popovers; once it has its own name, the product can change its mind about one without dragging the other. The canonical earner is the tooltip: in dotUI it's an _inverse_ surface — near-black in light mode — which no general-purpose surface token could ever express. The cost is real, though: every promoted name needs a value in light, dark, and every contrast variant, forever. dotUI currently ships exactly six component tokens — `tooltip`, `fg-on-tooltip`, `card`, `popover`, `sidebar`, `border-sidebar` — a deliberately short list. The rule of thumb: promote a component when its color is a product decision that can plausibly diverge, not "for flexibility."
+
+## The naming grammar
+
+Look across shipped systems and there are two dialects. **Numeric**: Radix's `blue9`, Tailwind's `blue-500` — the name encodes position on a ramp and nothing else. **Semantic**: names built from a small grammar of _property × role × state_. dotUI's theme file is a clean specimen: property prefix (`bg` implied for surfaces, `fg-` for text, `border-` for edges), role (`neutral`, `accent`, `danger`, `muted`, `field`…), state suffix (`-hover`, `-active`, `-disabled`) — composing `--color-accent-hover`, `--color-fg-danger`, `--color-border-field`. shadcn's variant of the same idea pairs each surface with its text color by suffix; its docs state the convention in one breath: "The base token controls the surface color and the `-foreground` token controls the text and icon color that sits on that surface."
+
+The dialects trade the same two currencies in opposite directions:
+
+<NumericVsSemantic />
+
+Numeric names are flexible and opaque. Any step can go anywhere — and chapter 10 already showed the price: nothing breaks loudly when someone ships `text-slate-400` on `bg-slate-100`, and the rebrand above is a codebase-wide find-and-replace, because every call site pinned the hue. Semantic names are guided and finite. `fg-muted` is a decision already made — a component author can't misfile it — and the theme owns the hue, so a rebrand is one line. The finiteness is also the weakness: the vocabulary can't say everything. Radix's own aliasing guide walks into it honestly — "creating semantic aliases like `accent`, `primary`, `neutral`, or `brand` can be helpful, especially when it comes to theming," but "you will likely run into issues where you need to use the same scale for multiple semantics": map `yellow` to "warning" and you'll need `yellow` again for "pending," `red` for both "danger" and "error." When no name fits, developers escape to primitives, and the API leaks.
+
+Mature systems land on both: numeric primitives underneath, a semantic tier on top, and a norm about which tier application code may touch. Radix ships the primitives and leaves the semantic tier as documented homework; Material ships only the semantic tier and hides the palette; Tailwind ships primitives and lets convention do the rest.
+
+## Pairing is the contract
+
+Here is the underrated part of the API — the part that makes tokens _promises_ rather than shorter names for hex codes. **Every token that paints a surface owes its consumers a guaranteed text partner.** shadcn encodes the debt in the suffix: `primary` ships with `primary-foreground`. Material encodes it in the role system — "on-primary rather than on-blue," in its own words, and the pairs are constructed, not audited: "Color role pairs (composed of container and on-container roles) have tonal values that provide accessible contrast" — chapter 10's tone arithmetic, where a large enough tone gap _is_ the contrast proof. dotUI generates the partner: a Tailwind plugin scans every primitive and emits `--on-accent-500` — black or white, whichever scores the higher WCAG ratio — and the semantic tier aliases it as `fg-on-accent`.
+
+That last sentence hides a decision worth dragging into the light. Whichever _meter_ the pairing generator trusts gets baked into every button it ships:
+
+<PairingFlip />
+
+Run dotUI's actual default accent through it. `--blue-500` is `#4992dd`, relative luminance 0.27 — above chapter 8's Y ≈ 0.18 tie point, so WCAG votes black categorically: black 6.44:1, white 3.26:1, and the max-ratio rule ships a black label. APCA sides with white, −65.1 against 44.4. This is the orange-button fight from chapter 8, reincarnated as a token default — and it lands exactly on steps 500–600 of the ramp, where solid buttons live. Chapter 8's posture resolves it here the same way it did there: the pairing promise must name both instruments — a WCAG floor, because that's the auditable, legal half — and an APCA target, because that's the half that predicts reading. A generator that quietly optimizes one meter will systematically ship pairs the other meter — and many eyes — dispute.
+
+The contract also has an honest null case: some tokens promise nothing. dotUI's subtle `border` on `bg` measures 1.33:1 — decorative by design, chapter 10's quiet card edge. But `border-field`, an input's boundary, arguably owes the 3:1 non-text minimum of WCAG 1.4.11 and currently measures 1.87:1. Either answer can be right; an API is only honest if it says _which tokens carry promises and which explicitly don't_.
+
+## One name, every room
+
+Chapter 16 ended with an IOU: name the light/dark pairs so components consume one token. This is the mechanism — **mode aliasing**: one semantic name resolving to different primitives per context.
+
+<ModeAliasTable />
+
+The component consumes `fg-muted` and never learns which room it's in. And the readouts echo chapter 16: the token resolves to slate 11 at 5.79:1 in light, slateDark 11 at 9.06:1 in dark — a _bigger_ ratio whose APCA magnitude is nonetheless smaller (Lc 78.0 versus −61.0), the flare-term over-credit again. `bg-elevated` pays the elevation IOU: in light it coincides with `bg` (an alias may share a value), in dark it lifts to slateDark 3. And the third column pays chapter 9's: `prefers-contrast` support is a _value_ variant on the same slots — borders promoted from step 6 to step 9 (past the 3:1 bar), muted text promoted to step 12 — never a new set of names.
+
+Architecturally there are two places the aliasing can live, and shipped systems split. **Redefine the primitives**: Radix's `dark.ts` makes `blue1` itself a different color in dark mode, so a semantic tier built on it never changes — and Radix's docs add a small third pattern ("mutable aliases") for the cases where one name must cross scales between modes. **Re-pick at the semantic tier**: Material keeps one tonal palette and has each role select a different tone per scheme — primary is tone 40 in light, tone 80 in dark. Both are defensible; the invariant they share is chapter 16's lesson wearing token clothes: the _names_ are constant, the _values_ are per-mode designs. dotUI today does the first — its `.dark` block redefines every primitive — but fills the dark values by literally reversing the light list, step 950 becoming step 50. The semantic tier is well-shaped; what it aliases in the dark is chapter 16's un-designed flip, wired in at the primitive tier.
+
+## How many names
+
+<TokenCountLineup />
+
+The counts measure different things — Radix's 12 are primitives per scale, the rest are public APIs — but the spread is the argument. More tokens buy precision: dotUI's 83 distinguish `border-field` from `border-control`, `fg-disabled` from `fg-primary-disabled`, and each distinction is a real design decision somebody gets to make exactly once. More tokens also cost decisions: "which of 83 applies here" is an onboarding tax that "which of 18" barely charges. Notice what the systems agree on, though: strip any of them to the tokens a component author touches daily and you get nearly the same ~20 — a surface trio (`bg`, `card`, `popover`), a text pair (`fg`, `fg-muted`), a border, a field, a focus ring, one accent family with its partners, one danger family with its partners. shadcn's 18 _is_ that list, almost verbatim.
+
+So the test for token 21 and beyond isn't taste, it's two questions: does some component need to pair two roles that no existing token distinguishes — and does the distinction survive a mode switch? Yes to both: it's a token. Otherwise it's just a value, and a primitive already holds it.
+
+## The lab
+
+Everything above, wired into one UI. The card below is painted entirely through a three-tier chain — hover any part to read its wire, end to end. The remap panel re-points the `accent` alias (Radix's semantic aliasing, live) and re-picks its step and its label policy; the checker holds all six pairing promises to both meters, continuously — the part every naming scheme leaves as homework.
+
+<TokenWiringPlayground />
+
+Worth doing, in order:
+
+- **Read the default.** `fg-on-accent` is on Auto — the max-WCAG rule dotUI's generator actually uses — and it picked black: 6.44:1, pass. The APCA column disagrees at Lc 44.4. Four of six promises hold on both meters; the button holds on one. You shipped this tension, not a resolution of it.
+- **Force White.** Now it's the designers' pick: 3.26:1, below the legal floor, flagged red — while APCA scores it the _better_ label. When the meters split, the pair is fragile either way.
+- **Move the solid step to 700.** The boring fix, same as chapter 8's orange: all six promises hold on both meters, and white didn't need forcing — Auto agreed.
+- **Repoint accent to Amber or Red.** The whole UI follows — badge, button, link — and Auto re-decides the partner per hue, because the pairing is recomputed, not copied. Watch the checker re-verify every promise on the way through.
+- **Hover the badge, then the link.** Two different elements, one wire: both consume `fg-accent`. That shared name is why they can never drift apart — and why renaming a semantic token is an API break, not a restyle.
+
+## The decision this unlocks
+
+This chapter _is_ dotUI's semantic-token axis, so the engine reading comes first. What ships today, read from the source: three tiers, with a twist — the "primitives" are already semantic families (`--accent-500`, `--danger-500`), their hue chosen at generation time, so tier 1's hue-to-role aliasing lives inside the generator rather than in CSS. On top, 77 semantic plus 6 component tokens in a consistent property × role × state grammar. Pairing is generated — `--on-*` for every primitive step — but by the max-WCAG black-or-white rule only. Mode aliasing happens at the primitive tier, and the dark values are the reversed light list: no dark design (chapter 16's verdict), and no contrast variants at all.
+
+The rewrite spec, stated as commitments:
+
+1. **The semantic tier is the public API.** Three tiers stay; the property × role × state grammar stays; application code and exported components consume semantic names only, with primitives as the documented escape hatch.
+2. **Every surface token declares its text partner, and the promise names both meters.** The WCAG 4.5:1 floor is enforced at generation — never ship a default pair below it — and the APCA Lc is computed and reported, so the 500-step disagreement zone becomes a visible engine decision instead of a silent plugin default. Partners should be drawn from the ramp, not just black/white — the ramp's own step 800 already clears both bars on its muted 100.
+3. **Modes are value columns, not new slots.** Light, dark, and `prefers-contrast` variants re-point the same token table — and each column is a designed pass (chapter 16), not an arithmetic of another column.
+4. **The component tier is an opt-in axis.** Six is close to the right floor; each promotion multiplies across every mode column, so the builder should make the cost visible.
+5. **Audit the 83 against the 20-core.** Every token beyond the core answers the two questions — a distinct pairing, surviving mode switches — or demotes to a value.
+
+Left open, on purpose: state and alpha tokens (`-hover` is a suffix today; whether states derive or get designed is chapter 18), chart palettes (chapter 19), and how the whole table ships as CSS (chapter 20).
+
+## Check yourself
+
+1. A teammate proposes `button-bg`, `button-fg`, and `button-border` component tokens "for flexibility," for every component. What must be true for a component token to earn its place, and what does each one cost across modes?
+2. Your accent solid is `#4992dd`. The pairing generator ships a black label at 6.44:1; the designer insists white reads better, and APCA agrees (−65.1 versus 44.4). What are the engine's two honest options — and which chapter-8 rule does each follow?
+3. `fg-muted` resolves to slate 11 in light mode and slateDark 11 in dark. Name the two places that aliasing can live architecturally, one shipped system for each, and the thing both architectures must never do to the token's _name_.
+
+## Further reading
+
+- [Design Tokens Format Module (draft)](https://www.designtokens.org/TR/drafts/format/) — the DTCG interchange format: `$value`, `$type`, curly-brace aliases; read the status block for exactly how standard it isn't yet.
+- [Radix Colors — Aliasing](https://www.radix-ui.com/colors/docs/overview/aliasing) — semantic, use-case, and mutable aliases, with the multiple-semantics warning quoted in this chapter.
+- [Material 3 — Color roles](https://m3.material.io/styles/color/roles) — the role system and its on-pairs; the "connective tissue between elements of the UI and what color goes where."
+- [shadcn/ui — Theming](https://ui.shadcn.com/docs/theming) — the `-foreground` pairing convention and the ~20-token core, live in the `:root` block.
+- [dotUI — `theme.css`](https://github.com/mehdibha/dotUI/blob/main/www/src/registry/base/theme.css) — the 83 tokens this chapter counted, in the property × role × state grammar.

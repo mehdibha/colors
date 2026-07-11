@@ -127,7 +127,7 @@ export const curriculum: Part[] = [
         slug: 'semantic-tokens',
         number: 17,
         title: 'Semantic tokens: tiers, naming, pairing',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'states-alpha-status',
