@@ -1,0 +1,86 @@
+---
+title: Gamma and the two grays
+description: rgb(128 128 128) emits about a fifth of white's light. Why screen values aren't light, why that lie is deliberate, and which "halfway" to trust for which job.
+part: 1
+question: Which gray is halfway between black and white?
+---
+
+import { HalfLightCheckerboard } from '@/components/playgrounds/half-light-checkerboard'
+import { ValueVsLightCurve } from '@/components/playgrounds/value-vs-light-curve'
+import { StepsSpentTwoWays } from '@/components/playgrounds/steps-spent-two-ways'
+import { MidpointGrayHunt } from '@/components/playgrounds/midpoint-gray-hunt'
+
+Quick: which gray is halfway between black and white? If you said `#808080` — 128, half of 255 — you answered like every developer, and your screen disagrees. Measured with an instrument, `#808080` emits about **22% of the light** that white does. A bit over a fifth. The gray that emits half of white's light is `#bcbcbc` — 188.
+
+Those are the two grays of the title, and both have a real claim to "50%." Chapter 1 ended on a promise: doubling the light does not double the brightness, and that one non-linearity breaks half the "obvious" color math in your codebase. This is where it breaks — and you don't have to take the physics on faith, because your screen can prove it right now:
+
+<HalfLightCheckerboard />
+
+Half the pixels at full blast, half off: the checkerboard emits exactly half of white's light by construction, no color theory involved. Averaging photons is physics, and physics is linear — so the pattern fuses into `#bcbcbc`, nowhere near the gray whose _number_ is halfway.
+
+The blur switch shows software getting that same average wrong. Your eye fuses the pixels by averaging their _light_ and lands on 188; the browser's blur averages their _values_ — (0 + 255) / 2 — and the pattern visibly darkens toward 128. That's not a bug: the Filter Effects spec requires CSS filter functions to operate on gamma-encoded sRGB. The spec-compliant answer is the physically wrong one.
+
+## The values are not light
+
+An sRGB value is not an amount of light. It's a position on an encoded scale — before a pixel lights up, the value runs through a decode curve. Chapter 2 said a color space is a model plus a precise physical meaning, including "which brightness curve." This is that curve, straight from the CSS Color 4 spec (value scaled to 0–1):
+
+```
+light = ((value + 0.055) / 1.055) ^ 2.4   when value > 0.04045
+light = value / 12.92                     otherwise
+```
+
+The small linear toe avoids an infinite slope at black on the encode side; the rest closely tracks a plain power of 2.2 — the exponent that "gamma" names.
+
+<ValueVsLightCurve />
+
+Two words for the two sides of that curve, and you'll meet them everywhere from here on:
+
+- **Gamma-encoded** — the values you write: hex, `rgb()`, every byte in a PNG. `#808080` lives here.
+- **Linear light** — actual amounts of light, where 0.5 means half the photons. Doubling a linear value doubles the light.
+
+CSS names both sides. `srgb` and `srgb-linear` are sibling color spaces in CSS Color 4 — chapter 2's lesson again, two coordinate systems for the same colors, differing in exactly one thing: the brightness curve. `color(srgb-linear 0.5 0.5 0.5)` rounds to `#bcbcbc`.
+
+Same colors, two ladders — and every color bug in this chapter comes from doing math on one ladder while believing you're on the other.
+
+## The lie is on purpose
+
+The curve started as an accident: CRT electron guns happened to turn voltage into light with a power-law response — Poynton puts it around 2.5 — so signals were pre-distorted to compensate. CRTs are gone; the curve stayed — because of what Poynton calls an amazing coincidence: the CRT's nonlinearity was very nearly the **inverse of human lightness sensitivity**. Vision runs on ratios. You can just barely detect two patches whose light differs by about 1%, whether both are dim or both are bright — so in the shadows, tiny differences in light are visible, while in the brights only big ones are. A surface emitting just 18% of a reference's light already looks about half as bright. (Photography's 18% gray card is the same fact.)
+
+That makes gamma encoding a compression scheme. With only 256 steps per channel, spending them evenly in _light_ wastes most of them on bright grays nobody can tell apart and starves the shadows, where eyes are sharpest:
+
+<StepsSpentTwoWays />
+
+Poynton's numbers: coding light linearly without visible banding takes about fourteen bits per channel; coding it gamma-encoded gets there in about nine. That's why your 8-bit screen mostly gets away with smooth gradients — and why the "lie" has survived its hardware by two decades.
+
+## So which gray is halfway?
+
+We now have two candidate ladders — values and light. There's a third: your eye. Time to measure it.
+
+<MidpointGrayHunt />
+
+Most people land in the low hundreds — near `rgb(119 119 119)`, the gray perceptual models call halfway (they score it L\* 50, on a lightness scale chapter 5 introduces), which emits 18% of white's light. Almost nobody picks `#bcbcbc`: the true half-light gray looks about three-quarters of the way to white (L\* 76), not half.
+
+Look at what that means. Your eye's answer sits _close to the value ladder_ and nowhere near the light ladder. That's the whole story of gamma in one reveal: **sRGB values are a rough perceptual scale, not a light scale.** The encoding was designed to walk in steps your eye considers even. It's why `#808080` "feels right," and why math done directly on hex values often looks _almost_ correct — with "almost" doing heavy lifting. Rough is not calibrated: chapter 4 shows how that near-miss wrecks HSL, and chapter 5 replaces it with spaces measured against actual perception.
+
+## Three ladders, three jobs
+
+Every color operation belongs to one ladder, and picking the wrong one is the most common color bug in software:
+
+- **Simulating light — linear.** Blending, blurring, resizing, glows: photons add linearly, encoded values don't. Software that averages gamma-encoded values — which is most software, the blurred checkerboard included — produces results that are systematically too dark. Ottosson's "How software gets color wrong" is the definitive tour, and which space to _mix_ in is chapter 7's whole subject.
+- **Judging appearance — perceptual.** "Does this look halfway," "are these steps even," "is this readable." Encoded values are only a crude stand-in here; the honest perceptual ladder (Lab, OKLCH) is chapter 5. Note that WCAG's contrast math starts by decoding every channel to linear light — it needs actual light, not values (chapter 8).
+- **Storing and shipping — gamma-encoded.** That's what the encoding is for: squeezing perceptual quality into 8 bits. Write hex, ship hex. Just don't do arithmetic on it and call the result light or lightness.
+
+Here's the Part 2 decision this chapter unlocks: when you build color ramps in **chapter 11, "Lightness curves and the three philosophies,"** every philosophy on the table defines "evenly spaced steps" on some ladder. You now know there are three, that they disagree wildly, and that only the perceptual one matches what users will see. A ramp spaced evenly in values is subtly uneven; spaced evenly in light, wildly so — and now you can say exactly why.
+
+## Check yourself
+
+1. `#808080` and `#bcbcbc` both claim to be "50% gray." In what sense is each one right?
+2. A teammate averages two colors channel-by-channel on their hex values to get a midpoint. What did they actually average — and why does the result usually look only slightly wrong instead of catastrophically wrong?
+3. Gradients and blurs are coming out with dark, muddy middles. Which ladder is the math running on, and which should it run on?
+
+## Further reading
+
+- Charles Poynton, [Gamma FAQ](https://poynton.ca/GammaFAQ.html) — the canonical reference: gamma as perceptual coding, the CRT coincidence, and the bit-depth arithmetic. The 1%, 18%, and fourteen-vs-nine-bit numbers are his.
+- Björn Ottosson, [How software gets color wrong](https://bottosson.github.io/posts/colorwrong/) — blending in sRGB vs linear vs perceptual, with the pictures that make it stick.
+- [CSS Color 4, predefined color spaces](https://www.w3.org/TR/css-color-4/#predefined) — the exact sRGB transfer function, and `srgb-linear` as a space you can write today.
+- [Filter Effects Module Level 1](https://www.w3.org/TR/filter-effects-1/) — where CSS filter functions are required to operate on gamma-encoded sRGB.

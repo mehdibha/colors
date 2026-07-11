@@ -14,7 +14,12 @@ export default defineConfig({
   // pre-bundling, vite discovers it mid-load and the re-optimize splits the
   // page across two React copies (null-dispatcher hook crashes).
   optimizeDeps: {
-    include: ['culori'],
+    include: [
+      'culori',
+      'react-aria',
+      'react-aria-components/ToggleButton',
+      'react-aria-components/ToggleButtonGroup',
+    ],
   },
   resolve: {
     alias: [

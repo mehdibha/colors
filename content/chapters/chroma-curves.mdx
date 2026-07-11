@@ -1,0 +1,102 @@
+---
+title: 'Chroma curves and the gamut ceiling'
+description: The second of a ramp's three curves. Chroma wants to be a design decision, but it lives under chapter 6's tent — a ceiling that touches zero at both ends of the scale and moves when the hue does. Constant chroma is impossible, hugging the ceiling is neon, and every real system is some strategy for drawing a curve in between.
+part: 2
+question: 'Your chroma curve fits blue perfectly — what survives when the hue turns to yellow?'
+---
+
+import { ConstantChromaStrip } from '@/components/playgrounds/constant-chroma-strip'
+import { RealChromaArcs } from '@/components/playgrounds/real-chroma-arcs'
+import { TwoCeilings } from '@/components/playgrounds/two-ceilings'
+import { MastersUnderTheCeiling } from '@/components/playgrounds/masters-under-the-ceiling'
+import { P3Headroom } from '@/components/playgrounds/p3-headroom'
+import { ChromaCurveEditor } from '@/components/playgrounds/chroma-curve-editor'
+
+Chapter 11 chose the lightness skeleton and froze the other two knobs — and even frozen, chroma kept making trouble: every philosophy's yellow problem was really a chroma problem wearing a lightness costume. Time to unfreeze it. The **chroma curve** is the second of a ramp's three curves: how much vividness each step gets, from the near-white paper steps to the near-black text steps.
+
+Lightness was a free choice — any L from 0 to 1 exists at every hue. Chroma is not free. Chapter 6 mapped the territory: at a given lightness and hue, there is a maximum chroma the screen can produce, and past it your value gets rescued by someone else's algorithm. Chapter 6 drew that boundary as a slice standing upright; rotate it to match this chapter's axes — steps left to right, chroma pointing up — and the boundary becomes exactly what it acts like: a **ceiling** over your ramp. Every chroma curve you will ever design is drawn in the space under that ceiling.
+
+## Constant chroma is impossible — and you wouldn't want it
+
+The naive spec writes itself: "for brand consistency, every step uses C 0.15." It fails twice.
+
+First, physics. The ceiling touches zero at both ends of the scale — at L 1 the only sRGB color is white, at L 0 only black, so there is simply no room for chroma near either. On chapter 11's skeleton at hue 250, step 1 sits at L 0.978, where the entire chroma budget is 0.011. Ask for 0.15 there and the gamut hands back 0.011 — and it does the same, with different numbers, at eight other steps. The only constant that never clamps on this skeleton is C ≤ 0.011: a "brand blue" ramp indistinguishable from the gray scale.
+
+Second, taste. Even if a wider gamut allowed it, a step-1 app background at C 0.15 would be candy paper, not a surface you could read a page on. Tailwind ships blue-50 at C 0.014 — a tenth of the naive spec — and no one has ever called blue-50 gray. The light end of a ramp doesn't want the chroma it can't have.
+
+<ConstantChromaStrip />
+
+## The shape real ramps draw
+
+So measure what shipped systems actually do. Two blues, two dialects, one shape:
+
+<RealChromaArcs />
+
+Chroma rises from near-zero at the paper steps, peaks around the solid steps, and tapers into the darks. Radix blue runs 0.003 → 0.193 at step 9 → 0.096 at step 12; Tailwind blue runs 0.014 → 0.245 at 600 → 0.091 at 950. The rise is chapter 10's job list expressed in chroma: backgrounds whisper, solids shout. The taper is more interesting — it never reaches zero, because the dark steps are the text steps, and text wants to keep its hue identity: Radix's step 12 is a _blue_ near-black, which is why links and headings in a blue-tinted UI still read as belonging to it.
+
+And one detail worth savoring: Radix blue's step 9 is `#0090ff` — red channel zero, blue channel maxed. That is a point _on_ the gamut surface: the purest step (chapter 10's phrase) sits at 100% of the ceiling for its lightness and hue, deliberately. The peak of the arc isn't just near the ceiling; for a vivid hue, it touches it.
+
+## The ceiling moves when the hue does
+
+If the ceiling were the same shape at every hue, one well-drawn arc would end the chapter. Chapter 6 already told you it isn't: the cusp — the lightness where a hue's maximum chroma lives — moves. Here are two hues' ceilings on the same axes:
+
+<TwoCeilings />
+
+The most vivid sRGB yellow, `#ffff00`, sits at `oklch(0.968 0.211 110)` — nearly white. The most vivid blue, `#0000ff`, sits at `oklch(0.452 0.313 264)` — well into the dark half. (That corner is a needle-sharp tip; the drawn boundary above crests just shy of it, at L 0.49, because a sampled slice can't quite catch a point that sharp.) At yellow's crest lightness, blue affords C 0.015: seven percent of yellow's budget at the same L. These aren't different tents; they're the same tent, and the pole moves.
+
+Shipped palettes confirm it. Tailwind blue's chroma peaks at 600 (L 0.546); Tailwind yellow's peaks at 400 (L 0.852). Nobody decided "yellow peaks earlier" as a brand statement — the cusp decided, and the palette followed. This is chapter 11's amber-and-yellow skeleton break seen from the other side: the hues that broke the lightness formation did it because their chroma ceiling lives somewhere else.
+
+The consequence for an engine: **one absolute chroma curve cannot serve every hue.** Draw it low enough to fit under every ceiling and it's the worst-case cap from chapter 5's demo — drab everywhere, criminally so at yellow. Draw it generous and it clamps somewhere, differently at every hue. Unless the curve stops being absolute.
+
+## Three ways to draw under the tent
+
+**Strategy one: an absolute curve, clamped.** Design one chroma curve in real C units, apply it to every hue, and gamut-map whatever pokes through the ceiling (chapter 6's chroma reduction, run at generation time — never shipped out-of-gamut). This is how Material's HCT works, at Google scale: a tonal palette is "constant in hue and chroma" while tone varies, and the docs state the clamp plainly — "chroma has a different maximum for any given hue and tone," so "the color returned may be lower than the requested chroma." Simple, predictable, tokens stay constants. The cost: wherever the curve exceeds the ceiling, the delivered chroma _is_ the ceiling — your ramp's vividness profile silently becomes the tent's shape, kinks and all, and a different portion of it at every hue.
+
+**Strategy two: a percentage of the ceiling.** Store the curve as fractions — step 9 gets 90% of whatever the ceiling is at its L and H. Now the curve adapts to every hue automatically and never clamps. Two costs. Equal percentages are not equal vividness: 90% of the ceiling at L 0.773 is C 0.108 at blue — a strong, usable blue — and C 0.219 at green, which is radioactive, because green's tent is twice as tall there. The divergence is a mid-scale problem: at the near-white steps every hue's ceiling has collapsed toward the same near-zero, so equal fractions can't drift apart there. And the curve inherits the ceiling's geometry, including the kink at the cusp: your smooth design intent, multiplied by an unsmooth surface.
+
+**Strategy three: a smooth curve fit under each hue's own ceiling.** Per hue, draw an arc — by hand or by spline — that stays beneath that hue's tent, touching it only where the design wants full vividness. This is what the good systems approximate. Radix's masters are the hand-drawn version, and measuring them against their own ceilings is revealing:
+
+<MastersUnderTheCeiling />
+
+The masters share no chroma curve and no percentage curve — blue rides its (low) ceiling at 81–100% nearly everywhere, while green holds its mid steps to 29–45% and never touches its tent at all, because riding _it_ would glow. What they share is the method: two caps, the gamut's and taste's, whichever is lower. Leonardo is the automated version — scales interpolate through hand-picked key colors, with an option that "applies bezier smoothing to interpolation." The trade-off is the same one chapter 11 charged for hand-tuned skeletons: fidelity per hue, paid for in reference data — someone or something has to know what "the right arc" is for each hue family.
+
+## Which tent? sRGB vs P3
+
+One more decision hides inside the ceiling: _which gamut's_ ceiling. Chapter 6 measured Display P3 at roughly a third more volume than sRGB, and that volume is chroma headroom:
+
+<P3Headroom />
+
+The headroom is uneven — around +8% at a blue solid, +13% at red, +39% at green — because P3's extra territory lives mostly in the greens and reds. Design your chroma curves against the sRGB tent and every P3 screen idles: the majority of phones leaving vividness on the table. Design against the P3 tent and the sRGB minority gets the platform's rescue — and chapter 6 was blunt about what ships: per-channel clip, the bad one. The grown-up answer is to design against both — an sRGB-safe base and a P3 variant that earns the extra chroma deliberately — and that's a shipping-format problem, which is chapter 20's to solve. What this chapter fixes is the principle: the P3 variant isn't "the same colors, brighter." It's the same curve strategy run under a taller tent.
+
+## The editor
+
+All of it in one place: chapter 11's skeleton, a live ceiling, and a chroma curve you draw yourself. Drag across the plot to paint per-step chroma.
+
+<ChromaCurveEditor />
+
+Worth doing, in order:
+
+- **Break your own curve.** The default arc fits hue 250 with a whisker of clearance. Drag the hue toward 110 and watch steps clamp one by one — hollow rings mark what you asked for, the dots show what the tent allowed. That gap is strategy one's cost, live.
+- **Switch to % of ceiling and turn the hue again.** No clamps, ever — the curve re-scales with the tent. Then park at 145 and look at the mid steps: the same fractions that read as a tasteful blue are a highlighter green. Strategy two's cost.
+- **Try the presets.** "Constant 0.15" is the opening demo's failure. "Hug the ceiling" is the tent itself: neon mid-scale, harmless at the ends — the ends' ceilings are so low that riding them is what every real system quietly does there anyway.
+- **Toggle the P3 ceiling.** The tent lifts, your curve gains headroom, and steps marked P3 are now promises only wide-gamut screens keep — on an sRGB screen, the browser clips them back to the boundary, near (not exactly on) where you started: chapter 6's clip-shift in lightness and hue, again.
+
+## The decision this unlocks
+
+dotUI's engine today is strategy one. The default producer takes the seed's chroma (floored at 0.11 so muted seeds still yield a usable accent), shapes it with a fixed envelope — 45% of peak at the ends, rising to 100% mid-scale — and CSS-gamut-maps every step to sRGB. That has two consequences the rewrite should face with open eyes. The envelope asks for at least ~0.05 at the near-white end — more for vivid seeds — where the ceiling is ~0.011 — so the light end of every dotUI ramp is ceiling-shaped by construction, not curve-shaped; it works only because riding a tiny ceiling is harmless. And the envelope peaks mid-scale, where the shipped systems measured above peak at the solid steps. There's also a `max` chroma mode that asks for C 0.4 everywhere — a pure ceiling-rider, useful exactly as often as neon is.
+
+So the chroma decision is really three: the strategy (absolute-and-clamped, ceiling-relative, or per-hue smooth fit — knowing what each one costs), the peak's location (mid-scale or at the solids), and the reference tent (sRGB only today; a real P3 story means every scale carries two chroma curves, and chapter 20 decides how they ship). What stayed frozen this chapter: the hue column of every ramp — Radix bends hue along the scale, and that bend is chapter 13. And where the seed's chroma _comes from_ — what happens when a brand hands you C 0.23 at hue 350 — is chapter 14's fight.
+
+## Check yourself
+
+1. A brand guide mandates "all scale steps at C 0.18 for consistency." Give both reasons this ships something other than what it says — the one physics enforces at the scale's ends, and the one taste enforces even where the gamut would allow it.
+2. An engine stores its chroma curve as percentages of the gamut ceiling. Blue looks great; green comes out fluorescent at the same percentages. What fact about the two hues' ceilings explains the difference, and why doesn't the same problem appear at the near-white steps?
+3. Your absolute chroma curve fits blue, but at hue 110 half the steps clamp. Name three genuinely different fixes and the strategy each one belongs to.
+
+## Further reading
+
+- Björn Ottosson, [sRGB gamut clipping](https://bottosson.github.io/posts/gamutclipping/) — the cusp geometry behind every ceiling in this chapter, and projections smarter than per-channel clip.
+- [CSS Color 4, §14 Gamut Mapping](https://www.w3.org/TR/css-color-4/#gamut-mapping) — the constant-lightness, constant-hue chroma reduction running inside every "clamped" marker above.
+- [material-color-utilities](https://github.com/material-foundation/material-color-utilities) — HCT's source; `TonalPalette` is strategy one shipped at scale, and the `Hct` class documents the clamp in its own words.
+- [Adobe Leonardo](https://github.com/adobe/leonardo) — key-color interpolation with optional bezier smoothing: strategy three, automated; chapter 24 dissects it.
+- [Tailwind CSS — Colors](https://tailwindcss.com/docs/colors) — read the chroma arcs and the moving peaks straight off the reference table: blue crests at 600, yellow at 400.

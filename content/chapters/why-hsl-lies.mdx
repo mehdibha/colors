@@ -1,0 +1,105 @@
+---
+title: Why HSL lies
+description: hsl(60 100% 50%) and hsl(240 100% 50%) claim the same lightness — one emits thirteen times the light of the other. Where HSL's numbers actually come from, and why the engine must never do math in them.
+part: 1
+question: hsl() holds L at 50%. Does the lightness hold?
+---
+
+import { EqualLightnessPalette } from '@/components/playgrounds/equal-lightness-palette'
+import { ConstantLHueSweep } from '@/components/playgrounds/constant-l-hue-sweep'
+import { WhatHslLComputes } from '@/components/playgrounds/what-hsl-l-computes'
+import { ThirtyDegreeSteps } from '@/components/playgrounds/thirty-degree-steps'
+import { SaturationThatIsnt } from '@/components/playgrounds/saturation-that-isnt'
+import { HslVsOklchStrips } from '@/components/playgrounds/hsl-vs-oklch-strips'
+
+Here's the most popular color trick on the web: pick a saturation and a lightness, rotate the hue, collect a palette. `hsl(h 70% 55%)` for eight hues — done. And because every swatch shares the same L, the palette is evenly lit. It says so right there in the notation.
+
+<EqualLightnessPalette />
+
+Flip the switch. The grays are the light each swatch actually emits, and they run from L\* 43 to L\* 81 — from darker than chapter 3's halfway gray to lighter than its three-quarters gray. The palette that promised one lightness spans nearly forty L\* points. Nothing subtle went wrong; the number called "lightness" just doesn't measure lightness.
+
+Chapter 2 called HSL "RGB with the furniture rearranged," and filed its friendliness under _dishonest_ with a pointer to this chapter. Time to pay that off — because HSL isn't slightly miscalibrated. Every one of its three channels is a lie about perception, all three for the same reason.
+
+## Turn one knob, watch two things move
+
+The palette confounds hue and lightness, so isolate it. Pin S at 100% and L at 50%, turn only the hue, and measure what comes out of the screen:
+
+<ConstantLHueSweep />
+
+The "light emitted" readout is the **relative luminance** from the WCAG definition — the same measurement contrast checking runs on (chapter 8). It's built from things you already know: decode each channel through chapter 3's curve to linear light, then weight the channels by how much of white's light each primary carries — red 21%, green 72%, blue 7%.
+
+Those weights are the punchline waiting to happen. Drag the slider from 60° to 240°: same S, same L, and the light emitted collapses from 93% of white to 7% — a factor of thirteen. In perceptual terms, `hsl(60 100% 50%)` sits at L\* 98, practically white; `hsl(240 100% 50%)` sits at L\* 30, a dark blue. This isn't an edge case someone found later — it's the CSS Color 4 spec's own example, in the section that _defines_ `hsl()`.
+
+A hue rotation was never supposed to touch lightness. In HSL it swings lightness across most of its range.
+
+## What L actually computes
+
+The lightness computation in CSS Color 4's conversion algorithm is one line:
+
+```
+L = (max(R, G, B) + min(R, G, B)) / 2
+```
+
+Take the largest channel and the smallest channel, average them. That's the whole formula — not a model of your eye — and it packs in two separate lies.
+
+**It runs on the wrong ladder.** Chapter 3 split the world into values, light, and perception. R, G, B here are gamma-encoded values — positions on the value ladder. HSL does arithmetic on them and labels the result "lightness," a perception word.
+
+**And it's blind to which channels are lit.** `max` is `max` whether the bright channel is green or blue; the formula never asks. But your eye asks: full green is 72% of white's light, full blue is 7%.
+
+<WhatHslLComputes />
+
+Notice what's missing from that formula: any measurement of a human. Lab and OKLCH (chapter 5) are fitted to experiments — people looking at colors and judging them. HSL is fitted to nothing. It's the RGB cube stood on its black corner, with cylindrical coordinates painted on: angle around the axis is "hue," distance from the axis is "saturation," height is "lightness." The names are aspirations, not measurements.
+
+One more thing worth understanding: **why HSL keeps earning your trust anyway.** On grays, S is 0 and L is just the channel value — and chapter 3 showed the value ladder is a _rough_ perceptual scale. Within a single hue, raising L does make the color lighter. So every quick test you run — a gray ramp, tints of one brand color — passes. The lie is locally true. It detonates the moment a formula crosses hues — which is exactly what palette generators, chart-color rotations, and "same L for every accent" token schemes do.
+
+## It was never designed to be true
+
+None of this is a bug someone should have caught. HSV and HSL arrived together in the 1978 SIGGRAPH proceedings — HSV in Alvy Ray Smith's "Color Gamut Transform Pairs," HSL in Joblove and Greenberg's "Color Spaces for Computer Graphics" — as coordinate remaps of the RGB cube for frame-buffer paint programs. Smith's paper advertises its transform as non-trigonometric — cheap enough to run per pixel on 1970s hardware. The derivations are pure geometry — no perceptual measurement enters the transforms. For 1978, picking colors by eye on a framebuffer, that was the right trade. The mistake is ours: we kept doing arithmetic on its numbers for five decades after the hardware constraint died.
+
+Today's spec is refreshingly blunt about it. CSS Color 4 — the document that defines `hsl()` — states: "A disadvantage of HSL over OkLCh is that hue manipulation changes the visual lightness, and that hues are not evenly spaced apart." The format's own specification tells you not to trust the knobs.
+
+## The other two knobs lie the same way
+
+Same cube geometry, same missing human — hue and saturation fib identically.
+
+Equal hue angles are not equal perceptual steps. The spec's own example pair:
+
+<ThirtyDegreeSteps />
+
+And S = 100% doesn't mean vivid. Saturation measures distance from the gray axis _relative to the most the cube can hold at that lightness_ — a ratio of available geometry. Near white the cube narrows to a point, so "100% saturated" can describe a color one step from gray:
+
+<SaturationThatIsnt />
+
+So the full indictment reads: L isn't lightness, S isn't vividness, and equal hue steps aren't equal steps. Every channel of `hsl()` misreports the thing it's named after.
+
+## What an honest channel looks like
+
+This chapter's job is demolition, not replacement — chapter 5 builds the successor properly. But you've earned one glimpse of the difference between a channel that's geometry and a channel that's a measurement:
+
+<HslVsOklchStrips />
+
+OKLCH keeps HSL's knobs — hue, colorfulness, lightness, the right _idea_ — but derives them from measured perception instead of cube geometry, so constant L actually holds. How it pulls that off, and what it costs, is chapter 5's whole subject. For now the comparison does its one job here: the lie is not inevitable. It's a property of HSL, not of color.
+
+## The decision this unlocks
+
+Here's the Part 2 decision this chapter settles: **the engine never generates or adjusts colors in HSL.** Concretely, none of these operations may run in HSL coordinates:
+
+- Building a ramp by stepping L (chapter 11) — the steps would be even in cube geometry and uneven to every user.
+- Deriving hover/pressed states by nudging L (chapter 18) — the same nudge is invisible on one hue and drastic on another.
+- Rotating hue for categorical palettes (chapter 19) — that's the opening demo.
+- "Same L across accents" as a consistency guarantee — L guarantees nothing about how light the colors look.
+
+HSL stays acceptable as an _input_ notation a user might type; the moment math runs on the channels, it has to run in a space whose channels mean what they say. Which space earns that job is chapter 5; how to move between colors safely is chapter 7.
+
+## Check yourself
+
+1. `hsl(60 100% 50%)` and `hsl(240 100% 50%)` share an L of 50%. Walk the actual formula: what did it compute for each color, and what two things did it ignore that let one emit thirteen times the other's light?
+2. A teammate generates a chart palette with `hsl(i * 36, 85%, 60%)` "so every series has equal visual weight." What would a grayscale screenshot of that chart reveal — and why did the tool's gray-ramp and single-hue tests pass?
+3. `hsl(320 100% 95%)` claims full saturation and looks like a pale pastel. What does HSL's S actually measure?
+
+## Further reading
+
+- [CSS Color 4, §7 HSL colors](https://www.w3.org/TR/css-color-4/#the-hsl-notation) — the spec defines `hsl()` and immediately documents the lie: the yellow/blue L=50% example, the 30°-hue-step example, and the conversion code all come from here.
+- Björn Ottosson, [Two new color spaces for color picking — Okhsv and Okhsl](https://bottosson.github.io/posts/colorpicker/) — the clearest modern autopsy of HSL/HSV's failures, by the author of OKLab.
+- Alvy Ray Smith, [Color Gamut Transform Pairs (SIGGRAPH 1978)](https://alvyray.com/Papers/CG/color78.pdf) — the original hexcone paper; HSL itself is from Joblove & Greenberg's companion paper, [Color spaces for computer graphics](https://doi.org/10.1145/800248.807362). Pure cube geometry, built for 1970s real-time constraints.
+- [WCAG 2.2, relative luminance](https://www.w3.org/TR/WCAG22/#dfn-relative-luminance) — the readout math behind every meter in this chapter: linearize, then weight 0.2126 / 0.7152 / 0.0722.

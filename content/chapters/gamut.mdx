@@ -1,0 +1,98 @@
+---
+title: 'Gamut: the edge of the screen'
+description: OKLCH will happily name colors no screen can show — chapter 5 quietly capped its C slider to hide that. The real shape of a screen's gamut, why max chroma depends on lightness and hue at once, and what happens — by spec, and in your browser — when you cross it.
+part: 1
+question: You named a color your screen can't show — what shows up instead?
+---
+
+import { SeamRevisited } from '@/components/playgrounds/seam-revisited'
+import { TentUnrolled } from '@/components/playgrounds/tent-unrolled'
+import { GamutSlice } from '@/components/playgrounds/gamut-slice'
+import { OneRampTwoRescues } from '@/components/playgrounds/one-ramp-two-rescues'
+
+Chapter 5 closed on a confession: the C slider had a ceiling, and the ceiling _moved_ as you dragged L. That wasn't OKLCH's doing. The demo computed the cap behind your back, live, so the knob would never hand you a color your screen can't produce. This chapter takes the cap off.
+
+`oklch(0.75 0.32 264)` is valid CSS. It parses, it converts, it means something precise as a perception — and no screen ever manufactured can show it. That's not a bug in OKLCH; it's the point of OKLCH. A space built to describe how colors _look_ has no reason to stop where some device's hardware stops. The set of colors a device or color space can actually produce is its **gamut** — chapter 2 gave every color an address; a gamut tells you which addresses have something built on them. (OKLCH doesn't even stop at the edge of vision: push far enough and the coordinates name "colors" no light can produce at all — the spec calls them imaginary colors.)
+
+## The seam was the edge all along
+
+You've already stood on a gamut boundary once. Chapter 2 put `rgb(255 0 0)` next to `color(display-p3 1 0 0)` and, on a wide-gamut screen, a seam appeared. Now you have the vocabulary for what that seam _is_:
+
+<SeamRevisited />
+
+Three gamuts matter for the web, nested like rings. **sRGB** (1996) is the floor — the gamut every screen guarantees, the one every hex code assumes. **Display P3** widens it mostly in the reds and greens: measured as volume in OKLab it holds about a third more colors, and it's what most phones and premium laptops sold in the last few years actually cover. **Rec.2020** is the horizon — roughly double sRGB's volume; CSS can already address it, but consumer screens that cover it barely exist. In OKLCH terms: sRGB red tops out at `oklch(0.628 0.258 29)`, P3 red reaches `oklch(0.649 0.299 29)` — same hue, 16% more chroma. Ask sRGB for the P3 red and its coordinates come back as `rgb(1.09 -0.23 -0.15)`: more than everything from the red primary, and _negative light_ from the other two. Chapter 2's sentence again, now with teeth: numbers mean nothing until a color space says what they mean — and the space also says what they _can't_ mean on this device.
+
+## The edge is a tent, not a wall
+
+If the gamut were a cylinder in OKLCH — "chroma up to 0.25, any L, any H" — this chapter would be a footnote. It isn't. In its own coordinates sRGB is a trivial cube: three channels, 0 to 1. But chapter 5 moved the engine's math into OKLCH, and seen from there the cube warps. Slice the solid at one hue and you get a lopsided triangle: a gray spine at C 0 running from black to white, and one point bulging furthest out — the hue's maximum chroma. That point is called the **cusp**, and where it sits depends on the hue, in _both_ coordinates. Here is the whole outer skin at once:
+
+<TentUnrolled />
+
+This is the fact to keep: **maximum chroma is a joint function of lightness and hue.** The most vivid yellow an sRGB screen can make is nearly white — `#ffff00` sits at `oklch(0.968 0.211 110)`. The most vivid blue is dark — `#0000ff` sits at `oklch(0.452 0.313 264)`, with _more_ chroma than yellow ever gets. The overall ceiling, C ≈ 0.32, belongs to magenta. So "maximum chroma" is never one number: it's a surface over lightness and hue.
+
+That's why chapter 5's demo had to move its ceiling — and it's worth knowing what that demo actually did: it capped C at the _smallest_ ceiling across all hues at your chosen L, so the knob stayed honest no matter where you spun H. Safe — and wasteful: at yellow's hue you were allowed nowhere near yellow's real peak. That trade — clamp everything to the worst-case hue, or let each hue reach its own edge — is precisely the problem a ramp generator has to solve, and it's why a color scale can't declare one chroma for all its steps. Chapter 12 is that fight; this chapter only hands it the map.
+
+## Crossing the edge: clip or map
+
+So a color lands outside the gamut — yours by arithmetic, or a P3 color arriving at an sRGB screen. Something displayable must be shown. There are two families of answers.
+
+**Per-channel clip** is the blunt one: convert to the screen's RGB, then clamp each channel into range. Fast, obvious — and it changes everything at once, because the three channels _were_ the color: chop one and you've changed the proportions, and the proportions are the hue. CSS Color 4's own example: `color(srgb-linear 0.5 1 3)` has OKLCH hue 265° — a blue. Clipped, it lands at hue 196° — a 69° swing into cyan. Lightness takes shrapnel too: ask for `oklch(0.9 0.4 30)` — an impossibly vivid light salmon — and clipping hands you `#ff0000`, fire-engine red at L 0.63. You asked for nearly white; you got a lightness crash of 0.27. The spec's verdict on clipping: "the simplest and least acceptable method" — though it concedes that colors only slightly out of gamut clip acceptably. The damage scales with the overshoot.
+
+**Chroma reduction** is the considered one: hold L, hold H, and walk C back toward gray until the color fits. The color stays _itself_, just calmer — the salmon becomes `#ffccc1`, a light pink at L 0.89, hue held to within a just-noticeable difference. This is what CSS Color 4 §14 standardizes as CSS gamut mapping: all of its permitted algorithms "aim at constant-lightness, constant-hue chroma reduction in the OkLCh color space" — it defines three and lets each engine pick, so long as the pick is used consistently. The first of the three binary-searches the chroma with one refinement: at each step, if simply clipping the candidate would move it less than a just-noticeable difference (ΔEOK 0.02), it takes the clip — snapping the result onto the boundary instead of hovering timidly inside it. Out-of-range lightness is handled first: L ≥ 1 returns white, L ≤ 0 returns black.
+
+Time to stand on the edge yourself:
+
+<GamutSlice />
+
+Two things worth hunting for in there. Rotate H and watch the tent deform — blue's boundary crowds into the dark corner, yellow's climbs nearly to white. Then park the point far outside at a light L (try H 30, L 0.9, C 0.4 — the salmon) and compare the squares: the clip square falls off a cliff, the map square just exhales.
+
+## What browsers actually ship
+
+Now the honest part. The spec draws a clean line: out-of-gamut values are _kept_ through parsing and calculation — your custom property still holds the impossible color — and the substitution happens "for display," on the way to the glass. And §14 spells out, in pseudocode, the chroma-reduction mapping you just watched.
+
+What ships, as of this writing (mid-2026): none of it. Chrome, Safari, and Firefox all do the same thing with an out-of-gamut `oklch()` literal — convert it to the display's color space and clip each channel. The method the spec calls least acceptable is the one in production, everywhere; the spec's algorithm exists in color libraries, not in engines. It isn't an oversight — it's a deliberate, much-argued implementer position (the CSSWG record is issue #9449), and gamut mapping is genuinely expensive per-pixel. But you don't have to take my word for it when you're holding the instrument: in the playground above, the "your browser paints" square is your browser testifying. On an sRGB screen it matches the clip square, pixel for pixel. If you're reading this after some engine ships real gamut mapping, it will match the map square instead — the demo stays true either way.
+
+The practical consequence is blunt: **today, an out-of-gamut color in your CSS gets the bad fallback.** Here's what that does to the thing this course is building toward — a ramp:
+
+<OneRampTwoRescues />
+
+The ramp you wrote is not the ramp anyone got. Clip turned a constant-hue blue into a hue sweep with a darkened, kinked top; the spec's mapping kept the blue honest but silently rebuilt the chroma curve you thought you'd chosen. The engine-sized conclusion: **never emit out-of-gamut values and hope.** The platform's rescue is the bad one, and even the good rescue redesigns your colors without telling you. Gamut is a constraint to design _inside_, at generation time — if chroma reduction is the behavior you want, you run it yourself, before the CSS is written.
+
+## The same edge, in code
+
+Everything this chapter did by eye, `culori` does by function — the same ones running inside every demo above:
+
+```js
+import { clampChroma, displayable, inGamut, toGamut } from 'culori'
+
+displayable('oklch(0.9 0.4 30)') // false — outside sRGB
+inGamut('p3')('oklch(0.9 0.4 30)') // false — outside Display P3 too
+
+clampChroma('oklch(0.9 0.4 30)', 'oklch') // plain chroma reduction
+toGamut('rgb')('oklch(0.9 0.4 30)') // the CSS §14 algorithm → #ffccc1
+```
+
+`displayable()` answers "is it in sRGB"; `inGamut(space)` builds the same test for any gamut. For fixing colors: `clampRgb()` is the per-channel clip (know thy enemy), `clampChroma()` is pure chroma reduction — hue and lightness held exactly — and `toGamut()`'s defaults implement the spec's binary search, JND tolerance and all, which is why its salmon (`#ffccc1`) differs by a hair from `clampChroma`'s: the final local clip is allowed to spend up to 0.02 ΔEOK. Every boundary drawn in this chapter's playgrounds is a live binary search over `displayable()` / `inGamut()` — nothing is traced from a diagram.
+
+## The decision this unlocks
+
+Two engine decisions come straight out of this chapter.
+
+**Chapter 12 — the chroma ceiling strategy.** A ramp's chroma curve must live under a tent whose height depends on both L and H. The options are now legible: cap at the worst-case hue (chapter 5's demo trick — safe, and drab at yellow), generate freely and gamut-map after (honest hue and lightness, unpredictable chroma — you saw the rebuilt curve), or design each hue's chroma curve against its own boundary. Chapter 12 picks one — and also picks _which_ tent is the reference ceiling: design to sRGB and leave P3 screens idling, or design to P3 and own the fallback.
+
+**Chapter 20 — whether to ship P3.** Some of your users' screens can show colors the rest physically cannot, and the fallback the platform applies on the smaller screens is clip. Whether the engine's output is one set of sRGB-safe values, or sRGB plus P3 upgrades, is a shipping-format decision — made when the engine knows both boundaries.
+
+One door stays closed a little longer: this chapter placed single colors against the edge. Chapter 7 moves _between_ colors — and a gradient between two in-gamut colors can still swing outside on the way.
+
+## Check yourself
+
+1. A teammate writes `oklch(0.9 0.4 30)` expecting a vivid light salmon and gets fire-engine red. What did the browser do, step by step — and what would the CSS gamut-mapping algorithm have returned instead?
+2. A style guide declares "all accents use `oklch(0.45 0.31 H)` for consistency." It works for blue. What shape fact guarantees it fails for yellow, and what would you have to give up to keep one C across all hues?
+3. QA reports that two status colors, tuned on a P3 MacBook, "look identical" on an office monitor. What happened at the gamut boundary — and which chapter 2 demo was the preview of this bug?
+
+## Further reading
+
+- [CSS Color 4, §14 Gamut Mapping](https://www.w3.org/TR/css-color-4/#gamut-mapping) — the clipping examples (including the 69° hue swing), the three permitted algorithms, and the binary-search pseudocode with the 0.02 JND.
+- Björn Ottosson, [sRGB gamut clipping](https://bottosson.github.io/posts/gamutclipping/) — what naive clipping does to real images, the cusp, and a family of smarter projections in OKLab; the CSS algorithm is one point in this design space.
+- [culori API](https://culorijs.org/api/) — `displayable`, `inGamut`, `clampRgb`, `clampChroma`, and `toGamut`, with the fine print on how `toGamut` tracks the CSS algorithm.
+- [csswg-drafts #9449](https://github.com/w3c/csswg-drafts/issues/9449) — the live record of browsers shipping channel clipping and authors objecting; read this before assuming the platform gamut-maps for you.
