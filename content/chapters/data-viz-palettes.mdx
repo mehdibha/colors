@@ -1,0 +1,119 @@
+---
+title: 'Color for data visualization'
+description: 'A UI accent ramp is one hue climbing twelve lightness steps — built to rank surfaces from quiet to loud. A chart palette has the opposite job: tell unordered things apart. Three families for three data shapes, why the ramp is the right source for exactly one of them, the ~8-hue ceiling, and the two meters — distinguishability and CVD-survival — the UI ramp never had to measure.'
+part: 2
+question: 'Is the UI accent ramp the right source for chart colors — or does data-viz need its own palette engine?'
+---
+
+import { RampVsCategorical } from '@/components/playgrounds/ramp-vs-categorical'
+import { ChromaCeiling } from '@/components/playgrounds/chroma-ceiling'
+import { OkabeItoSet } from '@/components/playgrounds/okabe-ito-set'
+import { SequentialVsRainbow } from '@/components/playgrounds/sequential-vs-rainbow'
+import { DivergingMidpoint } from '@/components/playgrounds/diverging-midpoint'
+import { SmallMarkArea } from '@/components/playgrounds/small-mark-area'
+import { ChartPaletteLab } from '@/components/playgrounds/chart-palette-lab'
+
+Chapter 17 left an IOU: the token table has no name for a bar chart's fifth series, and it was right not to try. Chart color is a different problem with different physics, and this chapter decides whether the engine even touches it. There is a tempting shortcut — you already generated a twelve-step accent ramp across chapters 10–15, so reach into it and hand out steps 3, 5, 7, 9 as four series. That instinct is right for exactly one of the three chart jobs, wrong for a second, and useless for the third, which needs a piece of machinery the UI system never built. The decision this chapter reaches is a split one: **emit sequential and diverging scales from the seed — they are the ramp machinery you already run — but grow categorical color as its own axis, default it to a vetted CVD-safe set, and measure the two meters a UI ramp never owed.**
+
+## Three jobs, three geometries
+
+A chart palette is a function from data to color, and the data arrives in three shapes that want three different objects inside the OKLCH cylinder.
+
+- **Categorical** (qualitative): unordered classes — Chrome, Safari, Firefox. No class is _more_ than another, so the colors must imply no order and be maximally distinct. In OKLCH that is a **ring**: points at one lightness and one chroma, spread around the hue angle — chapter 5's equal-step guarantee, drawn as a circle.
+- **Sequential**: ordered magnitude — 0 to 100%, low to high. One perceptual dimension, monotonic. In OKLCH that is a **path down the lightness axis**: one hue, lightness descending step by step. Chapter 11's lightness-anchored philosophy, applied to data instead of surfaces.
+- **Diverging**: signed magnitude around a meaningful zero — profit and loss, above and below average. Two sequential arms meeting at a neutral middle. In OKLCH that is a **V**: two hues, both climbing to a light neutral at the center.
+
+The accent ramp _is_ the sequential shape — one hue, twelve lightnesses. Which is exactly why handing out its steps as categorical series fails:
+
+<RampVsCategorical />
+
+Two failures, both fatal. First, a single-hue ramp _encodes order_ — light-to-dark blue reads as a ranking, so the palette whispers "Email is last" about data with no order. That is the direct consequence of the ramp being the _sequential_ shape used for the wrong job. Second, the ramp was built so adjacent steps stay _close_ — chapter 10's adjacency contract, the thing that makes a smooth surface ladder — and closeness is the enemy of a categorical set. Four hues at one lightness imply nothing and sit several times farther apart. The ramp is not a bad palette; it is the _sequential_ palette used for the _categorical_ job.
+
+## Categorical: hue spacing under the tent
+
+Generate a categorical set the honest way: fix lightness, fix chroma, walk N hues evenly around the circle. The even spacing is chapter 5's payoff — in a perceptually uniform space, equal hue steps _are_ roughly equal perceptual steps, a promise no even spacing in HSL could make (chapter 4).
+
+But chapter 6's tent sets the ceiling on chroma. Maximum chroma depends on L _and_ H at once, and it is not the same for every hue — at L 0.65 a blue reaches far higher chroma than a yellow. An _equal_-chroma set can only be as saturated as its weakest hue: the achievable chroma is the minimum ceiling across all N hues. Push past it and one hue clips out of gamut, breaking the equality the set depends on. So a principled categorical generator is capped — colorful, never neon, because the tent's tightest corner votes for the whole ring.
+
+<ChromaCeiling />
+
+There is a ceiling of a second kind, and the honest move is to name it out loud: **hues collide around 7–8 categories.** The wheel is only 360° wide; nine evenly-spaced hues sit 40° apart, and at fixed moderate lightness 40° is near the edge of a confident glance — worse under CVD. The vetted sets all converge here. The Okabe–Ito palette — which Bang Wong reprised in _Nature Methods_ (2011) — was designed CVD-first, and ships exactly eight:
+
+<OkabeItoSet />
+
+Eight, and the set _is_ the ceiling, not an arbitrary stopping point. ColorBrewer's colorblind-safe qualitative subsets cap even lower; Tableau's `schemeTableau10` goes to ten but its last few are hard to separate. Past the ceiling the answer is never "add a ninth color" — it is re-encode: direct labels, position, shape, or grouping the tail into "other." An engine that keeps minting hues past eight is shipping collisions with a straight face.
+
+## Sequential: monotonic lightness is the signal
+
+For an ordered variable the eye reads magnitude primarily off lightness. So the one rule is: lightness must move monotonically, one direction, every step. That is chapter 11's lightness-anchored philosophy, applied literally — fix the lightness progression, let hue and chroma serve it. The bonus, from chapter 9: a lightness-ordered ramp survives grayscale and CVD by construction, because lightness order is the one thing a deficiency can't scramble.
+
+Do it wrong and you get the rainbow — the `jet` colormap that was matplotlib's default until version 2.0 replaced it with viridis in 2017. Toggle between them and watch the lightness curve:
+
+<SequentialVsRainbow />
+
+Jet's lightness is non-monotonic: dark at both ends, bright bands of yellow and cyan in the middle. Each local maximum in that curve reads as a boundary the data doesn't have; each flat stretch hides a real gradient. That is the empirical case against rainbows (Borland & Taylor, 2007): non-monotonic luminance invents edges and buries structure. Viridis's whole design brief was the opposite — perceptually uniform, monotonically increasing luminance, legible in grayscale and under CVD. In OKLCH you get that for free by fixing a lightness ramp and letting hue drift.
+
+## Diverging: two arms, one honest midpoint
+
+A diverging scale is two sequential ramps sharing a midpoint, and everything rides on what that midpoint _is_. Chapter 7 already showed the trap: interpolate straight from one saturated hue to another and the middle sags through gray concrete — `linear-gradient(blue, yellow)` puts a dead gray where the interesting zero should be. On a diverging chart that gray is not just ugly; it is _dark_, so the values nearest zero read as the most intense on the plot. The scale lies about where the action is.
+
+<DivergingMidpoint />
+
+The fix is chapter 15's near-white neutral, not a mid-gray: ColorBrewer's RdBu puts `#f7f7f7` at the center — a real light neutral carrying almost no chroma — so zero recedes and both arms climb away from it in lightness. Two consequences for the engine. The midpoint is a _designed_ light neutral (chapter 15's tint budget keeps it from feeling clinical), not whatever a straight line happens to pass through. And the interpolation runs _per arm through OKLCH_, each arm a lightness ramp meeting the neutral — never one straight RGB line end to end that dips through the concrete.
+
+## CVD is the hard constraint, not a finishing touch
+
+Everything above is necessary and not sufficient, because the metric a categorical generator optimizes — perceptual distance for _your_ eyes — is not the metric one in twelve of your male readers uses. Chapter 9's number, from Okabe and Ito's own page: "One in twelve Caucasian (8%)… males are so-called 'red-green' colorblind." Red–green is the common axis, which is exactly why a set that looks maximally spread to you can collapse: evenly-spaced hues in OKLCH are _not_ evenly spaced once the eye drops a channel.
+
+This is why Okabe–Ito is CVD-_first_: its 8 colors were chosen for distance under simulated deficiency, and they carry a lightness spread so they survive even grayscale — the ultimate degradation. The engine lesson is chapter 9's, unchanged: never let hue be the only channel, and verify by _simulating_, not by hoping. A generator that can't see a collision it just shipped has no business shipping unverified.
+
+## Two contrast jobs — one of them not a standard
+
+A UI token owes one contrast promise: text versus its surface. A chart mark owes two. First, **series versus plot background** — a filled bar or a line must stand off the paper. WCAG 1.4.11 puts the floor for a meaningful non-text mark at 3:1, and a pale categorical color on white can fail it while looking fine in isolation. This is the auditable half, and it is where WCAG — not APCA — is the relevant instrument: APCA scores text, and offers no data-mark threshold. Second, **series versus adjacent series** — two lines that cross, two bars side by side. WCAG has no normative ratio for this; it is a design heuristic, the glance-apart distance the flagship measures as min pairwise ΔEOK. State that split honestly: the first is law, the second is judgment.
+
+And small marks need more of both — a 1px line or a scatter dot carries less area, so its color reads paler and closer to its neighbors than the same color in a big fill:
+
+<SmallMarkArea />
+
+## The lab
+
+Three palette types, one generator, on a real chart. Pick the type and the count; the set is built in OKLCH — categorical as N hues at fixed L/C capped by the tent, sequential as a monotonic lightness ramp, diverging as two arms to a light neutral. For categorical you can swap the generated set for Okabe–Ito's vetted 8. The simulate toggle recolors the chart and recomputes every distance _as seen_; the readouts hold the set to the glance-apart bound, the ceiling, and the background floor.
+
+<ChartPaletteLab />
+
+Worth doing, in order:
+
+- **Categorical, generated, 6, then simulate Deutan.** The min pairwise ΔEOK is comfortable at first; flip to Deutan and watch it drop as two hues slide together. This is why even spacing is not safety.
+- **Switch the source to Okabe–Ito, still Deutan.** The vetted set holds its minimum where the generated one collapsed — it was chosen for exactly this view.
+- **Push the count to 9 or 10.** The ceiling flag fires and the collisions count climbs. The engine's honest answer is not a tenth color; it is "re-encode."
+- **Sequential.** The lightness is monotonic and min-adjacent ΔEOK is even. Note the lightest step's contrast against white — the pale end of any sequential ramp is where the background floor bites.
+- **Diverging.** The midpoint sits at a light neutral, zero recedes, the arms stay symmetric. This is the shape the accent ramp cannot make on its own — it has only one hue.
+
+## The decision this unlocks
+
+dotUI's engine today emits a UI system: primitive ramps, semantic tokens, no chart palettes. The question was whether the single-hue accent ramp is the right source for chart color. The answer splits by job, and it decides what the engine emits.
+
+1. **Chart color is its own axis — never aliased to accent.** `accent` is one hue; a categorical set is many. Wiring `chart-1…chart-n` to accent steps ships the ordered-looking, muddy, hard-to-separate failure from the first demo. Chart tokens get their own slots and their own contract.
+2. **Sequential and diverging _are_ the ramp machinery — emit them from the seed.** A sequential scale is a single-hue monotonic-lightness ramp (chapter 11); a diverging scale is two seed-derived arms meeting at chapter 15's near-white neutral, interpolated per arm in OKLCH. Both are deterministic functions of the seed's hue; produce them directly rather than sending the user shopping. Never emit a non-monotonic (rainbow) sequential map; that is a bug, not an option.
+3. **Categorical: even hues at fixed L, chroma capped by the tent's tightest hue** (chapters 5 and 6) — generable, but generate only _behind a CVD verifier_. Even spacing does not survive a dropped channel, and the generator can't see that without simulating.
+4. **Default categorical to a vetted set; generation is the escape hatch.** Ship Okabe–Ito (8, CVD-safe, grayscale-safe) as the default and the recommendation. The OKLCH generator exists for brand-tinted or larger sets, but every candidate is run through chapter 9's simulation and rejected if its min as-seen ΔEOK falls below the glance-apart bound. The engine never ships an unverified categorical set.
+5. **Name the ceiling in the API.** Past ~8 CVD-safe hues the engine returns the 8 and tells the caller to re-encode — position, shape, label, or grouping — never silently truncating or recycling colors.
+6. **Every chart palette ships with its meters.** Distinguishability (min pairwise ΔEOK, CVD-aware) and CVD-survival for categorical; monotonic-lightness verification for sequential; light-neutral midpoint and arm symmetry for diverging. And two contrast partners: series-vs-background is the WCAG 1.4.11 3:1 floor, _enforced_; series-vs-series is the glance-apart heuristic, _reported_ — and labeled plainly as judgment, not standard. The UI ramp only ever owed a text pair; chart palettes owe distinguishability and CVD-survival, measured at generation.
+
+Rejected outright: rainbow/jet sequential scales; any categorical set whose only separation is red-versus-green; and diverging midpoints that are not a real light neutral.
+
+Left open, on purpose: how this whole table — UI tokens, states, and now chart families — ships as CSS custom properties is chapter 20; how Radix, Tableau, and Material each drew their categorical sets is Part 3.
+
+## Check yourself
+
+1. A teammate wires `chart-1…chart-4` to accent steps 3/5/7/9 "because they're already in the theme." Name the two distinct failures for a categorical chart — one about what the ramp implies, one about telling the colors apart — and the one chart job for which this wiring would actually be correct.
+2. You generate six evenly hue-spaced colors at fixed L and C, all in gamut, min pairwise ΔEOK 0.15 — well above the glance-apart bound. Why is this still not safe to ship, and what must the engine run before it does?
+3. A diverging scale runs blue to red. Why does the choice of midpoint decide whether the scale tells the truth, and what did chapter 7 call the wrong one?
+
+## Further reading
+
+- [Okabe & Ito — Color Universal Design](https://jfly.uni-koeln.de/color/) — the 8-color CVD-safe qualitative set this chapter ships as the categorical default, its exact hex, and the "one in twelve Caucasian (8%) males" prevalence.
+- [ColorBrewer 2.0 — Cynthia Brewer](https://colorbrewer2.org/) — the three families as a UI (sequential / diverging / qualitative), the colorblind-safe filter, and RdBu's `#f7f7f7` light-neutral midpoint.
+- [A Better Default Colormap for Matplotlib — Smith & van der Walt](https://bids.github.io/colormap/) — viridis's design brief: perceptual uniformity and monotonic luminance, and why it replaced jet in matplotlib 2.0.
+- [Borland & Taylor — Rainbow Color Map (Still) Considered Harmful](https://ieeexplore.ieee.org/document/4118486) — the evidence that non-monotonic luminance invents false boundaries and hides real ones.
+- [d3-scale-chromatic — categorical schemes](https://d3js.org/d3-scale-chromatic/categorical) — `schemeTableau10` and the ColorBrewer qualitative sets as machine-readable, permission-blessed hex, the form an engine would bundle.

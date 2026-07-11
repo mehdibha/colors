@@ -139,7 +139,7 @@ export const curriculum: Part[] = [
         slug: 'data-viz-palettes',
         number: 19,
         title: 'Color for data visualization',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'shipping-color',
