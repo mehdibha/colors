@@ -145,7 +145,7 @@ export const curriculum: Part[] = [
         slug: 'shipping-color',
         number: 20,
         title: 'Shipping color in CSS',
-        status: 'planned',
+        status: 'published',
       },
     ],
   },

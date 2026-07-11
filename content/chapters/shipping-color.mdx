@@ -1,0 +1,139 @@
+---
+title: 'Shipping color in CSS'
+description: 'The token table from chapter 17 is a spec, not a stylesheet. Compiling it has exactly two settings — bake every value to static hex, or emit CSS that computes at runtime with color-mix, relative color, and light-dark. This chapter is that fork, priced across four axes: browser support, CSS bytes, live theming, and whether contrast is still readable off the value.'
+part: 2
+question: 'Ship the token table as baked hex or as CSS that computes at runtime — what does each artifact trade away?'
+---
+
+import { TailwindThemeOutput } from '@/components/playgrounds/tailwind-theme-output'
+import { MixVsRamp } from '@/components/playgrounds/mix-vs-ramp'
+import { RelativeColorSteps } from '@/components/playgrounds/relative-color-steps'
+import { LightDarkOneliner } from '@/components/playgrounds/light-dark-oneliner'
+import { P3Fallback } from '@/components/playgrounds/p3-fallback'
+import { CompileTheToken } from '@/components/playgrounds/compile-the-token'
+
+Chapter 17 ended with an IOU stated in as many words: how the whole token table ships as CSS is chapter 20. This is chapter 20. That table is an abstract object — roughly twenty core names, each a promise about perception, each resolving to a value per mode. To ship it you _compile_ it, and the compiler has exactly two settings. **Bake**: freeze every value to a static hex at build time — `--accent: #4992dd`. **Compute**: leave an expression on the right-hand side and let the browser resolve it — `--accent-hover: color-mix(in oklab, var(--accent), black 12%)` — using the CSS color functions that reached Baseline between 2023 and 2024. Baked is bigger and dumber and bulletproof. Computed is tiny, themeable live, and load-bearing on functions some of your users' browsers shipped last year.
+
+Everything below is the four things that choice trades: browser support, CSS bytes, live theming, and whether you can still audit contrast by reading the value. The engine has to pick a side — per token — so pick it with the trade in front of you.
+
+## The delivery vehicle is a custom property
+
+Whichever setting the compiler uses, it writes into the same slot: a CSS custom property. That isn't a choice — it's the delivery layer. `var(--accent)` is a name a component reads and the theme owns, chapter 17's semantic tier in its CSS clothes. dotUI ships this through Tailwind v4's `@theme`, and the mechanism is worth seeing exactly, because it explains why you write `@theme` and not a plain `:root` block: one token definition emits _both_ the custom property and a family of utilities.
+
+<TailwindThemeOutput />
+
+Tailwind's docs state the dual role plainly — theme variables "also instruct Tailwind to create new utility classes." So chapter 17's `bg-accent` isn't hand-written; it falls out of `--color-accent`. The token table becomes a block of `@theme` definitions, and the vehicle underneath is always the custom property. The rest of this chapter is about what you are allowed to put on the right-hand side of one.
+
+## The fork: two artifacts, four costs
+
+State the decision before the tools, because the tools are only interesting as ways to move along four axes.
+
+**Baked hex.** Every token resolves to a literal. Support is _universal_ — any browser that reads a hex triplet renders it, no feature detection anywhere. Contrast is _auditable at the source_ — the pairing promise from chapter 17 is a number your build can compute and refuse to ship below. The price sits on the other two axes: the CSS _enumerates every value_ — every step, every state, both modes — so it is the largest artifact; and a literal is _frozen at compile time_, so a rebrand is a rebuild, not a variable change.
+
+**Computed.** States and modes are expressions: hover mixed from the accent, a step offset from a seed, both modes carried in one property. The CSS is _smaller_ — you derive instead of enumerate — and it is _live-themeable_: repoint one seed variable and everything downstream repaints in the browser. The price is the mirror image: you inherit the _support story_ of every function you use, and the resolved color is _not in the source_, so contrast can't be read off the value — you have to compute what the browser will compute before you can audit it.
+
+Neither is "modern versus legacy." They are two points on a support / bytes / theming / auditability trade, and a serious engine ships a blend. First the toolbox — and its support tiers, honestly.
+
+## States by mixing
+
+The cheapest computed lever. Chapter 17 left `-hover` as a bare suffix and pushed the real question forward: chapter 18 is where it got priced. Chapter 18's thesis was that a state is _a modification of what's already there, not a color_, and that "derive a state" itself forks — _a solid step versus a layer of alpha_. `color-mix()` is how you compute either at runtime: a hover is the accent nudged toward black, a disabled fill the accent nudged toward transparent.
+
+The mechanism is exactly chapter 7: `color-mix` **is** interpolation, and the space is the whole game. `in oklab` walks a straight line in OKLab 12% of the way to black; `in srgb` walks it through the muddy middle — and note _why_ it muddies: an `in srgb` mix interpolates in the gamma-encoded channels (chapter 3), not linear light, so the midpoint darkens through a dead grey. The space keyword is grammatically optional but there is no default you'd want — always write it. `color-mix()` has been Baseline **widely** available since **May 2023** (Safari 16.2, Chrome 111, Firefox 113): safe barefoot, no fallback.
+
+One caveat the mechanism hides — chapter 6 arriving under a runtime expression:
+
+<MixVsRamp />
+
+The mixed hover lands _near_ the ramp's own step 600 but not _on_ it — about ΔEOK **0.013** in OKLab here, under the 0.02 just-noticeable difference (chapter 5), so at this hue and step it's close enough; a more saturated hue or a bigger step can clear it. `color-mix` draws a straight line toward black; the ramp's step 600 was placed at a target lightness and then _gamut-mapped_, its chroma pulled inward to fit the sRGB tent (chapter 6). Those are different operations landing on different colors — and switching the mix space moves the result again without ever hitting the baked step. A runtime-mixed state is an _approximation_ of the designed ramp step, defensible and often close, but not the same value, and you can't read the gap off the CSS — only off a meter.
+
+There's a second cost the toward-black hover hides, and chapter 18 already named it. A `color-mix(in oklab, var(--accent), black 12%)` resolves to _one fixed literal_. It is surface-blind: drop that same hover onto a tinted panel and it ignores the panel — chapter 18's "gray smudge on a colored surface" failure, reintroduced by a runtime mix. The demo's lower row shows it: the solid chip is identical on both surfaces, while the toward-_transparent_ alpha chip picks up the panel it sits on. Alpha composites over whatever is behind it; a solid mix doesn't. So "derive a state at runtime" is not one choice — it's a solid step (surface-blind, but auditable as a flat color) versus a layer of alpha (surface-correct, but its resolved contrast depends on what it lands on, so it can't be audited off the value at all). The engine has to price both.
+
+## Steps from a seed
+
+The stronger, newer lever: derive a whole step by pulling a color's channels apart. Relative color syntax does it — `oklch(from var(--accent) calc(l - 0.08) c h)` reads the accent's L, C, H as _numbers_, subtracts 0.08 from the lightness, keeps chroma and hue. For OKLCH the extracted lightness resolves on the **0–1** scale, so `calc(l - 0.08)` is a genuine, correctly-sized darken. Repoint the seed and every color derived from it follows, at parse time.
+
+<RelativeColorSteps />
+
+That's the seductive part — a whole scale from one seed, chapter 14's front door running in the browser instead of the build. State its support honestly, because it is a _different tier_ from `color-mix` and it matters: relative color reached Baseline **newly** available on **2024-09-16**, gated by Safari 18 (Chrome 125 and Firefox 128 shipped earlier that year), and isn't projected widely available until **March 2027**. "Newly available" means safe today with a roughly two-and-a-half-year tail of older browsers. Deriving your _only_ accent value from relative color today ships _nothing usable_ to a Safari 17 user: the custom property still holds the token stream (custom properties parse with the permissive any-value grammar), but `var(--accent)` fails to substitute, so the consuming declaration is invalid at computed-value time and the element falls back to its inherited or initial color. It is progressive enhancement, not a foundation. Lumping it in with `color-mix` because "both are new color functions" is the common mistake; they are eighteen months and one Baseline tier apart.
+
+## One property, both modes
+
+Chapter 16 insisted dark mode is a second design; chapter 17 wired it as mode aliasing — one name, two per-mode values, expressed as a `:root` value and a `.dark` override. `light-dark()` collapses that to a single declaration:
+
+<LightDarkOneliner />
+
+The function returns its first argument when the resolved `color-scheme` is light, its second when dark. The requirement is exact and easy to miss — MDN states it in one breath: "the `color-scheme` must have a value of `light dark`," usually on `:root`. That property is the opt-in, and it does double duty (Baseline since January 2022): it also switches native scrollbars and form controls to match, which a `.dark` class alone never does. Without it, `light-dark()` has no scheme to read and silently does nothing. `light-dark()` itself is Baseline **newly** available since **May 2024** — same tier as relative color, same tail.
+
+What `light-dark()` carries is still chapter 16's designed pair — two authored values, not a derive. The one-liner buys you fewer names; it does not buy you a second design for free. That distinction becomes the sharpest edge in the lab.
+
+## Wide gamut needs two different tests
+
+Chapter 6 called the screen's limit the edge of the screen and measured the headroom P3 holds past sRGB. Delivering into that headroom is a fallback-first cascade: declare the sRGB value first, override it with the wider one, so a browser that can't parse the P3 line keeps the fallback (the last valid declaration wins). The trap is testing for the wrong thing.
+
+<P3Fallback />
+
+The correction worth burning in: there is no `@supports (color-gamut: p3)`. `@supports` tests whether the browser can _parse_ a property–value pair; `color-gamut` is a media feature, not a value, so that query never fires and the P3 upgrade silently does nothing. The two questions are different and need different tests. **Can the screen show it** is `@media (color-gamut: p3)`. **Can the browser parse it** is `@supports (color: color(display-p3 1 0 0))`. Both are widely available — `color()` and `@media (color-gamut)` since 2023. And note `oklch()` can itself name colors outside sRGB, so an OKLCH value needs the same discipline: clamp it (chapter 6's `clampChroma`) or give it an sRGB fallback of its own.
+
+## The Baseline that decides the fork
+
+The whole support question reduces to two tiers, and the tier decides whether a feature is a foundation or an enhancement:
+
+| Feature                | Baseline         | Since    | Barefoot today? |
+| ---------------------- | ---------------- | -------- | --------------- |
+| `color-mix()`          | Widely available | May 2023 | yes             |
+| `oklch()` / `oklab()`  | Widely available | May 2023 | yes             |
+| `color(display-p3 …)`  | Widely available | May 2023 | yes             |
+| `@media (color-gamut)` | Widely available | Feb 2023 | yes             |
+| `color-scheme`         | Widely available | Jan 2022 | yes             |
+| `prefers-contrast`     | Widely available | May 2022 | yes             |
+| `forced-colors`        | Widely available | Sep 2022 | yes             |
+| `light-dark()`         | Newly available  | May 2024 | needs fallback  |
+| Relative color         | Newly available  | Sep 2024 | needs fallback  |
+
+The top block is safe today with no ceremony. The bottom block — the two most powerful levers, one-property modes and seed-derived scales — carries a tail. That single line in the table is the trade the engine has to price. And the media features are chapter 9 read as _value columns_, never a fork in the code: `prefers-color-scheme` reads the OS choice, `prefers-contrast: more` re-points the same slots to a higher-contrast set, and `forced-colors: active` hands color to the OS entirely (replacing your values with system-color keywords and forcing some properties — `box-shadow` among them — to `none`, so any edge you cared about must be a `border`, not a shadow, or it vanishes).
+
+## The lab
+
+One token family — `accent`, its hover, and its `fg-on-accent` partner, in light and dark — compiled three ways at once: fully **baked** hex per mode; **mix + `light-dark()`**; and everything **derived from one seed** by relative color. The swatches are computed here with culori running the same operations the CSS would, so they render in every browser; the generated CSS text is shown as text. Repoint the seed and watch which artifacts can follow.
+
+<CompileTheToken />
+
+Worth doing, in order:
+
+- **Read the default (Blue).** All three render the same button, because at the build seed they resolve to the same place. The divergence is in the scorecard: baked is universally supported and fully auditable but the largest; the computed columns are smaller and live-themeable but inherit Baseline-2024 support and read as an expression, not a value.
+- **Repoint the seed to Violet or Red.** Columns 2 and 3 follow instantly — one variable moved. Column 1 can't; it shows its frozen Blue values and flags "needs rebuild," because a literal is fixed at compile time. That is the whole theming trade in one click.
+- **Watch column 3's dark accent.** It builds the dark value by `oklch(from var(--seed) calc(l + 0.20) calc(c * 0.75) h)` — the exact lift-and-desaturate _flip_ chapter 16 said fails. Read the ΔEOK against the _designed_ dark value: deriving one seed all the way to dark reintroduces the un-designed flip. Column 2 avoids it precisely because its `light-dark()` carries two authored values. The convenience of full derivation has a perceptual bill.
+- **Read the `fg-on-accent` line on the computed columns.** The contrast is real, but you had to resolve the color to measure it — the number isn't in the source. And notice `fg-on-accent` stays a `light-dark()` of two literals _even there_: CSS can't branch on which of black or white _passes_ the floor, so chapter 17's pairing decision remains a compile-time pick in all three artifacts.
+
+## The decision this unlocks
+
+dotUI compiles to baked hex today: the generator emits static per-step, per-mode values into `@theme`, every primitive and every `--on-*` partner enumerated, no runtime color functions in the output. That's the maximum-support, fully-auditable artifact — and it pays exactly the two costs the fork predicts: the CSS enumerates everything, and a rebrand is a rebuild. The rewrite keeps that floor and decides, per token, where computing buys more than it costs.
+
+The spec, as commitments:
+
+1. **Baked hex is the default artifact — the auditable floor.** Every semantic token resolves to a literal the build can run WCAG and APCA against and refuse to ship if the pairing promise fails (chapter 17, enforced where the value is actually known). For a library shipped to every app, universal support isn't a nice-to-have; it is the product.
+2. **Runtime computation is progressive enhancement, never the sole declaration.** Where `color-mix` or relative color shrinks the CSS or enables live theming, emit it layered over the baked literal in correct cascade order — literal first, computed override after — and gate any newly-available function so an older browser keeps the literal. `color-mix` (2023) and relative color (2024) are different tiers; the fallback strategy must know which one it is enhancing with.
+3. **Every computed color names its space, chosen per job.** A `color-mix` hover in OKLab is a straight line, not the ramp's gamut-mapped step (chapters 3, 6, 7). Where that difference clears the 0.02 just-noticeable threshold, bake the step instead of deriving it — accuracy beats a few bytes.
+4. **A derived state is a solid step _or_ a layer of alpha — decide per state.** A `color-mix` toward black is a surface-blind literal that reintroduces chapter 18's one-surface failure; a `color-mix` toward transparent composites over any surface but its resolved contrast can't be read off the value. Overlays and hovers that must survive tinted surfaces ship as alpha; flat states audited against a known surface ship as a solid step.
+5. **Modes ship as `light-dark()` over a baked two-column fallback.** One name carries both designs with `color-scheme: light dark` on the root, and the `.dark` literals remain underneath for the tail. But the two values `light-dark()` carries stay chapter 16's designed pair.
+6. **Never let seed-derivation smuggle back the flip.** Relative color deriving a hover from the accent is fine; deriving the whole _dark_ palette from the light seed is chapter 16's arithmetic flip wearing new syntax. Dark accents stay authored even when states are computed.
+7. **Wide gamut is an enhancement with two guards, not one.** sRGB literal first; the P3 override under `@media (color-gamut: p3)` for the display and `@supports (color: color(display-p3 1 0 0))` for the syntax — never conflated. Clamp `oklch()` that leaves sRGB.
+8. **Preferences are value columns, not new artifacts.** `prefers-contrast` and `forced-colors` (chapter 9) re-point the same token table under a query — the same lesson as chapter 17's mode aliasing, one more column.
+
+Left open, on purpose: this is the last of Part 2 — the table is now CSS. How Radix, Tailwind, Material, Spectrum, and Geist each actually made these calls — who bakes, who computes, who tokenizes P3 — is Part 3 (chapters 21–25).
+
+## Check yourself
+
+1. A teammate ships the whole token table as `color-mix` and relative color "to keep the CSS tiny," with no fallbacks. Two costs from this chapter bite — which one is a hard support failure and which is a soft audit failure, and which single function gates the support?
+2. You need `--accent-hover` derived from `--accent`. Give the `color-mix` form and the relative-color form, and state the one Baseline fact that makes you pick `color-mix` for a broad-audience product.
+3. You're computing a hover overlay that has to sit on both a white card and a tinted panel. Why does `color-mix(… black 12%)` fail here, what's the fix, and what do you give up on the audit axis by using it?
+4. Why does `@supports (color-gamut: p3)` never fire, and what are the two correct tests for shipping a P3 color with an sRGB fallback — one for the display, one for the syntax?
+
+## Further reading
+
+- [MDN — `color-mix()`](https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/color-mix) — the formal syntax, why the interpolation space is optional in grammar but not in practice, and the "widely available since May 2023" banner.
+- [MDN — Using relative colors](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_colors/Relative_colors) — how `from` extracts channels as numbers, and the `@supports` guards for the older Safari 16.4 variant.
+- [MDN — `light-dark()`](https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark) — the one-property mode carrier and its exact requirement that `color-scheme` be `light dark`.
+- [MDN — `@media (color-gamut)`](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/color-gamut) — the display-gamut test (`srgb`/`p3`/`rec2020`), distinct from the `@supports` syntax test.
+- [web-features explorer — relative color](https://web-platform-dx.github.io/web-features-explorer/features/relative-color/) — the 2024-09-16 newly-available date and the March 2027 widely-available projection, per engine — the tail this chapter prices.
+- [Tailwind CSS v4 — Theme](https://tailwindcss.com/docs/theme) — why `@theme` emits both a `:root` custom property and utility classes from one token definition.
