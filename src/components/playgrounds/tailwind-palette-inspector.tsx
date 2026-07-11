@@ -84,7 +84,7 @@ export function TailwindPaletteInspector() {
   const [textSel, setTextSel] = useState<string>('white')
 
   const ramp = RAMPS[family]
-  const bgStr = ramp[bgIdx] ?? ramp[5]!
+  const bgStr = ramp[bgIdx] ?? ramp[5] ?? '#000000'
   const bg = hexOf(bgStr)
   const fg =
     textSel === 'white'
