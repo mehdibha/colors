@@ -133,7 +133,7 @@ export const curriculum: Part[] = [
         slug: 'states-alpha-status',
         number: 18,
         title: 'States, alpha, and status colors',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'data-viz-palettes',

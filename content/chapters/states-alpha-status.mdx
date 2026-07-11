@@ -1,0 +1,106 @@
+---
+title: 'States, alpha, and status colors'
+description: 'A hover tuned on the card turns to a gray smudge on a colored panel — the failure that proves a state is a modification of what is already there, not a color. When a state comes from a ramp step versus a layer of alpha, why the focus ring and status families are their own designs, and why disabled contrast is broken on purpose.'
+part: 2
+question: 'One hover, every surface — does the state come from a ramp step or a layer of alpha?'
+---
+
+import { HoverOnTwoSurfaces } from '@/components/playgrounds/hover-on-two-surfaces'
+import { FocusRingEverySurface } from '@/components/playgrounds/focus-ring-every-surface'
+import { DisabledOnPurpose } from '@/components/playgrounds/disabled-on-purpose'
+import { StatusSoftAndSolid } from '@/components/playgrounds/status-soft-and-solid'
+import { StatusNeedsASecondChannel } from '@/components/playgrounds/status-needs-a-second-channel'
+import { StateStatusLab } from '@/components/playgrounds/state-status-lab'
+
+Chapter 10 already spent three of the twelve steps on states — "steps are jobs," and three of the jobs are interaction: step 3 the component's rest background, step 4 its hover, step 5 its active-or-selected. Chapter 17 shipped `-hover` as a state suffix in the grammar. So a hover looks solved: a designed ramp step with a name. This chapter is where that answer breaks, and the break tells you what the ramp can't: a state isn't a color, it's a modification of whatever is already there. Get it wrong and the same hover that looks right on the card turns to garbage on a colored panel. Get it right and one token composes over anything. That fork — a solid step versus a layer of alpha — is the decision, and it decides where states, focus, and status colors all come from.
+
+## The hover that fits one surface
+
+Start with the failure. Tune a hover until it looks right on the card, then drop the exact same control on a tinted panel:
+
+<HoverOnTwoSurfaces />
+
+The solid step is a single hex — `neutral-200`, a designed gray one notch darker than the card. On the blue panel that gray has no relationship to what it covers: it's a near-zero-chroma smudge sitting on a saturated surface, ΔEok 0.096 off the panel where it was a 0.030 whisper on the card. It was never a hover; it was one surface's hover, wearing a role name.
+
+The alpha overlay is a different kind of thing. It's not a color, it's an operation — black at 8%, composited over whatever is underneath. And it's worth seeing the operation literally, because two things about it decide the whole chapter. When the browser paints `rgba(0,0,0,0.08)` over a surface, it blends per channel:
+
+```
+out = α · overlay + (1 − α) · surface
+```
+
+First, the formula references `surface` — the result is defined _relative to whatever is underneath_, so one alpha token produces the right delta over a plain card, a tinted panel, a photo, or a gradient. A solid step has no `surface` term; it's an absolute value, correct only where it was measured. Second, the blend runs in gamma-encoded sRGB, not linear light — chapter 3's "screen values aren't light" — which is why an 8% black overlay darkens far less than 8% of the way to black, and why moving the math to linear would re-weight every state layer. This is the spine of the chapter: **a solid step encodes a result; an alpha overlay encodes the operation that produces it.** The operation travels; the result doesn't.
+
+Both mechanisms ship, and the split is instructive. Radix builds the solid answer into the scale — steps 3/4/5 are rest/hover/active for subtle components, and a solid button at step 9 hovers to a separately-tuned step 10 (two hovers, because there are two rest surfaces). But Radix _also_ ships a full 12-step alpha variant of every scale, plus theme-independent Black and White alpha scales "designed for overlays." Material 3 goes almost entirely alpha: a state layer is the on-color at a fixed opacity — hover 0.08, focus 0.12, pressed 0.12, dragged 0.16 — composited over the component. eBay's playbook is the same mechanism with its own ladder (hover +4%, pressed +8%, dragged +12%). The opacities are a house style; the mechanism is one bet made repeatedly.
+
+The honest catch is chapter 1's **simultaneous contrast** wearing work clothes — a color has no fixed appearance until you know what surrounds it: because an alpha overlay's final color depends on what's beneath it, you can't know its contrast in advance. The same 8% black is a different color — a different _look_ — over every surface it lands on. That's not a bug, it's the definition; but it means an alpha state's contrast has to be checked against each surface it can travel over, or the worst one, never asserted once.
+
+## Focus is its own token
+
+A hover modifies one component. A focus ring has a harder job: it must stay visible on _every_ surface the focusable thing can sit on — a card, a colored panel, an inverse toolbar, an image. No step from the component's own ramp can promise that, because that ramp is tuned to the component, not to the world around it. So the focus ring is a dedicated token, not a derived step.
+
+<FocusRingEverySurface />
+
+dotUI ships it as `border-focus` (aliased to `accent-500`) at 2px with a 2px offset. Here's the honest audit, though: WCAG 1.4.11 asks a focus indicator for 3:1 against the adjacent color, and measured, `accent-500` grazes 2.99:1 on the card and dips to 2.26:1 on the blue panel — it misses the floor on the light surfaces it most often lands on. The offset gap is a genuine shape cue (chapter 9's never-hue-alone, satisfied for free by a ring being a shape), and it helps the eye, but it does not raise the ratio against the adjacent color. The engine fix is real: pick the focus token to clear 3:1 on the surfaces it actually lands on, or ship a two-tone ring (a light and a dark contour) so one edge always passes. Either way, focus is designed as its own high-contrast token — never borrowed from a per-surface state step.
+
+## Disabled is broken on purpose
+
+Every other state fights for contrast. Disabled throws it away, deliberately:
+
+<DisabledOnPurpose />
+
+Material 3 states the recipe as opacity — disabled content at 38%, container at 12%. dotUI states it as a step — `fg-disabled` is `neutral-500`. Both land under the 4.5:1 floor (dotUI's stepped neutral at 3.25:1, M3's 0.38 opacity lower still at 2.55:1), and both are correct, because WCAG 2.2 is explicit in both SC 1.4.3 and 1.4.11: "User Interface Components that are not available for user interaction (e.g., a disabled control in HTML) are not required to meet contrast requirements." But the exemption is a floor the law drops, not one your design should. A disabled control still has to read as a control and never be mistaken for an enabled one — fade it too far and it vanishes, too little and it invites dead clicks. The engine decision is narrow and real: disabled is a computed reduction, consistent across roles, and the stepped neutral is the more legible default — raw opacity can dim past reading on a busy surface.
+
+## Status is a parallel family, not a step
+
+Success, warning, danger, info aren't states of the accent — they're their own accent-like families, and each owes the full kit chapter 17 defined: a solid, a soft surface, a text partner, a border, and the pairing promise binding them. dotUI ships exactly that per family — solid at 500, soft surface at 100 (info at 50), text at 800 — in two styles that don't measure the same:
+
+<StatusSoftAndSolid />
+
+The soft style clears both meters comfortably; family-800 text on the family-muted surface is a big tone gap by construction (chapter 10). The solid style is chapter 8's orange-button fight, four times over. Every status solid sits at step 500, right in the contested zone: a black label passes WCAG (5.8–7.1:1) but fails APCA (Lc 42–49), and a white label passes APCA (Lc 61–68) but fails WCAG (2.97–3.60:1). At step 500 _neither_ label passes both meters — so a status solid that carries a label belongs at step 600–700, where white clears both (danger-600 + white: 4.87:1, Lc 78). A step-500 solid is fine only as a label-free dot or bar. Status doesn't get a contrast exemption for being "just" a warning.
+
+Two more traps come with status, both from earlier chapters. First, naming: chapter 17 quoted Radix's warning that one scale serves multiple semantics — yellow is both "warning" and "pending," red both "danger" and "error," and a red brand accent collides head-on with a red danger family. The fix is either many aliases onto one scale or deferring to the raw scale name; you can't pretend the mapping is one-to-one. Second, and worse, status leans hardest on the one channel chapter 9 told you never to trust alone:
+
+<StatusNeedsASecondChannel />
+
+Under deuteranopia — the dichromatic end of red-green color vision deficiency, which in some form (mostly the milder deuteranomaly) affects roughly one in twelve men — the success green, warning amber, and danger red collapse into a single olive band, the exact hues users must never squint at made indistinguishable. Only blue holds. A status system encoded in hue alone _is_ this failure. The rule is non-negotiable for the status families specifically: pair every status color with a second channel — an icon, a shape, a word — so it survives with the color removed. And all of this needs a dark pass (chapter 16): status colors go soft against a dark room, yellow re-negotiates its whole position, and the soft/solid pair gets re-picked per mode.
+
+## The lab
+
+Every axis in one control. Pick a role, a state, and — for the state layers — a mechanism, then watch the same button render on a plain card and a tinted panel at once. The readout is the argument: the solid step's fill is one hex frozen against the card, so its chroma dies on the panel; the alpha overlay recomputes and keeps the tint. Switch to focus to see the mechanism toggle go dark — focus is its own token — and to disabled to watch contrast drop on purpose.
+
+<StateStatusLab />
+
+Worth doing, in order:
+
+- **Neutral, hover, alpha.** Read the panel row: chroma stays tinted, the fill stays blue. Now switch mechanism to **Solid step** — the panel fill collapses toward chroma 0.00, a value frozen off the card. Same state, same role; only the mechanism decides whether it survives the second surface.
+- **Active.** The overlay deepens to 12% (Material's pressed value). Alpha tracks the surface; the frozen solid drifts further from it.
+- **Switch role to Danger, then Warning.** The state layer takes the family's tint — status slots into the exact same machinery as neutral, no separate code path. Watch the label contrast move with it.
+- **Focus.** The mechanism toggle disables itself, because focus doesn't derive from the component. The verdict reads its ratio against each surface — and both land under WCAG 1.4.11's 3:1, the honest gap in the shipped `accent-500` ring.
+- **Disabled.** Contrast drops below the floor and the verdict says so — exempt, but still legible. That's the line WCAG lets you cross and your design shouldn't.
+
+## The decision this unlocks
+
+dotUI today ships states as suffixes (`-hover`, `-active`) resolving to stepped ramp values, a dedicated `border-focus` token, computed `fg-disabled` neutrals, and a full per-family status kit (`danger`/`warning`/`success`/`info`, each with solid, soft, text, border, and on-colors). What it lacks is an alpha primitive set — every state is a solid step, so no state composes over an arbitrary surface — and there's no dark design for any of it. The rewrite spec, as commitments:
+
+1. **Ship alpha as a first-class primitive set.** Alongside the solid ramp, generate an alpha ramp per family plus theme-independent black/white alpha overlays (Radix's model). This is what makes one hover, one scrim, one focus wash compose over any surface — the solid step is the special case for the one surface it was tuned against. Composite in gamma sRGB (chapter 3); the opacity ladder is a design choice (M3's 0.08 / 0.12 / 0.12 / 0.16 is a defensible default).
+2. **State layers are the operation, checked per surface.** Hover/active/pressed are the on-color at fixed opacity, and because the composited contrast depends on the surface, the generator verifies each state against every surface it can travel over — or the worst one — never once. Keep the solid step only for a component's own opaque background, which never travels.
+3. **Focus is a dedicated high-contrast token with an offset, held to 3:1 on every surface it lands on.** The current `accent-500` ring misses (≈2.3–3.0:1 on light surfaces) — raise the token or ship a two-tone ring. It already carries a shape channel (chapter 9), and it owes a `prefers-contrast` value column.
+4. **Disabled is a computed reduction, exempt but legible.** A stepped-neutral (or reduced-opacity) content layer, consistent across roles, with an asserted floor of "still perceptibly a control, never mistaken for enabled" — above the letter of the WCAG exemption. Prefer the stepped neutral (more legible) over raw opacity.
+5. **Status families are parallel accents, default soft.** Every family owes solid + soft + text + border + pairing promise on both meters. The soft style clears both for all four; the solid style is a per-family meter split (chapter 8), so a labeled solid lives at 600–700 and its label policy names the WCAG floor _and_ the APCA target. Naming allows many aliases onto one scale (Radix), no status ships without a non-hue channel available, and each family re-picks its values per mode.
+
+Left open, on purpose: chart and categorical palettes are chapter 19; how the whole table — states, alpha, status, modes — ships as CSS custom properties is chapter 20; and the Radix and Material deep dives on exactly these mechanisms are chapters 21 and 23.
+
+## Check yourself
+
+1. You tune a hover step until it looks perfect on the card, then a colored callout ships and the hover reads as a gray smudge. Name the mechanism you used, the mechanism that would have survived, and — pointing at one term in the blend formula — the reason the second one composes over both surfaces.
+2. A teammate wants the focus ring to be "accent-600, one step down from the button, to keep it on-brand." Give the reason a per-component step can't do the focus ring's job, and — knowing `accent-500` already measures 2.99:1 on the card — the two honest ways to make the token clear WCAG 1.4.11's 3:1.
+3. Your warning solid ships a white label at 3.27:1 and passes review because "disabled and status controls are exempt from contrast." Untangle the claims: which control is actually exempt, which chapter-8 fight the warning button is really having, why neither black nor white passes both meters at step 500, and what the fix is.
+
+## Further reading
+
+- [Radix Colors — Understanding the scale](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale) — steps 3/4/5 as rest/hover/active and 9/10 as solid rest/hover: the designed-step answer, stated per step.
+- [Radix Colors — Scales](https://www.radix-ui.com/colors/docs/palette-composition/scales) — the 12-step alpha variant of every scale plus theme-independent Black/White alpha, "designed for overlays."
+- [Material 3 — State layers](https://m3.material.io/foundations/interaction/states/state-layers) — the state layer as a fixed-opacity overlay of the on-color; the source token values are hover 0.08, focus/pressed 0.12, dragged 0.16.
+- [WCAG 2.2 — Understanding SC 1.4.11 Non-text Contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html) — the 3:1 requirement for UI components, their states, and focus indicators, with the disabled-control exemption quoted verbatim.
+- [Radix Colors — Aliasing](https://www.radix-ui.com/colors/docs/overview/aliasing) — the multiple-semantics problem (yellow = warning and pending) and the two shipped fixes.
+- [eBay Playbook — Interaction States](https://playbook.ebay.com/foundations/interaction-states) — the same overlay mechanism on its own ladder: light-mode color-fill steps by +4% hover / +8% pressed / +12% dragged (black in light mode, white in dark; a different set for graphic elements).
