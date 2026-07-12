@@ -1,0 +1,116 @@
+---
+title: 'Shipping color in CSS'
+description: "Ten chapters of engine design compress into one text file. Custom-property tiers in :root and .dark, Tailwind's @theme wiring, oklch literals without hex training wheels, a P3 upgrade block, and the color math CSS finally does at runtime — plus the line where build-time JavaScript still owns the job."
+part: 2
+question: 'Same theme, different shipping techniques — what CSS does the engine actually emit?'
+---
+
+import { FlipLivesDownstairs } from '@/components/playgrounds/flip-lives-downstairs'
+import { FallbackTwoWays } from '@/components/playgrounds/fallback-two-ways'
+import { P3TwoWaysToShip } from '@/components/playgrounds/p3-two-ways-to-ship'
+import { RelativeHoverOneLiner } from '@/components/playgrounds/relative-hover-one-liner'
+import { LightDarkFlip } from '@/components/playgrounds/light-dark-flip'
+import { EmittedCssInspector } from '@/components/playgrounds/emitted-css-inspector'
+
+Everything Part 2 built — twelve jobs, three curves, a seed policy, tinted neutrals, a dark second pass, a token grammar, a state matrix, three chart contracts — has to leave the engine as a file someone can `@import`. That file is the product. dotUI ships exactly two: `colors.css`, auto-generated primitives, and `theme.css`, the hand-written names. This chapter is about what goes in those files in 2026: which syntax, which fallbacks, which math moves into the browser, and which math never can.
+
+## Two files, one direction
+
+The tier structure from chapter 17 maps onto CSS with almost no translation. Primitives are custom properties on `:root`, re-declared in a `.dark` block (dotUI) or a `[data-theme]` selector (same mechanics, different hook). Semantic aliases are custom properties that hold _references_ — `--color-bg: var(--neutral-50)` — and they're declared once, for all modes:
+
+<FlipLivesDownstairs />
+
+The reason this works is worth knowing precisely, because the whole theming architecture hangs on it: a custom property stores its `var()` reference unresolved, and substitution happens per element, at the moment a real property consumes it. An element inside `.dark` asking for `var(--color-bg)` gets the token `var(--neutral-50)`, looks _that_ up from where it stands, and finds the dark value. Flip the bottom tier and every alias re-resolves; the names never move. Chapter 16's "second generation pass" ships as a second block of primitives — and chapter 16's other finding shows up as an absence: dotUI's `--accent-500` appears once, because the solid survives the room change, so the dark block simply doesn't mention it.
+
+The last step — names becoming API — is Tailwind v4's `@theme`. In the docs' words, theme variables "instruct Tailwind to create new utility classes": declare `--color-accent` inside `@theme` and `bg-accent`, `text-accent`, `border-accent` exist, while the variable itself is also emitted as a plain `:root` custom property you can read anywhere. That's dotUI's entire distribution: `theme.css` is one `@theme` block of 83 aliases — 77 semantic, 6 component, chapter 17's two upper tiers — pointing down into `colors.css`. (The `inline` variant — `@theme inline` — makes the utility carry the alias's _value_ instead of a `var()` reference; dotUI uses it for radius math and its `color-mix()` shine shadow, where the reference would resolve against the wrong element.)
+
+## oklch literals, no training wheels
+
+What syntax do the primitives use? The answer in 2026 is unambiguous: `oklch()`, as literals, no fallbacks. Browser support is green and has been for a while — `oklch()` is Baseline **widely available**, shipped across engines since May 2023 (Chrome 111, Firefox 113, Safari 15.4). The strongest evidence that this is settled: your build tool already assumes it. Tailwind v4's compatibility page states its core "specifically depends on" Chrome 111, Safari 16.4, and Firefox 128 — the toolchain's floor is above the color syntax's floor, so shipping hex "for safety" protects nobody your CSS framework hasn't already dropped.
+
+And there's a sharper reason not to ship hex fallback lines: in a custom-property architecture, they don't work.
+
+<FallbackTwoWays />
+
+The classic two-declaration fallback relies on parse-time validation — an old browser rejects the `oklch()` declaration and keeps the hex above it. Custom properties aren't validated at parse time; they accept nearly any token stream, so the last declaration wins even in a browser that can't paint it. The failure surfaces later, at `var()` substitution, and it doesn't reach back into the cascade — per MDN, "the initial or inherited value of the property is used." Your button doesn't fall back to the hex; it falls to transparent, or inherits whatever color its parent had. If you genuinely need to serve pre-2023 browsers, the honest tools are an `@supports` block swapping the whole primitives file, or `@property` with an `initial-value` — not hex lines that lost the cascade before the page loaded.
+
+Where hex still rules, and honesty demands saying so: **HTML email.** Modern color syntax sits at about 21% support across email clients (caniemail's `lch()/oklch()/lab()/oklab()` table), and the failure modes are worse than "ignored" — in Gmail, using this syntax in an inline style removes _all_ inline styles on that element. Email is not a smaller browser; it's a different platform, and it gets hex. For the web, the verdict the brief suspected: hex fallbacks are a 2020 habit, and in 2026 they're rarely worth a line.
+
+## Shipping P3
+
+Chapter 6 left a decision at this chapter's door: some screens can show colors the rest physically can't, and when an out-of-gamut `oklch()` literal reaches an sRGB screen, every browser still does the thing the spec calls least acceptable — channel clipping (the CSSWG record is issue #9449; nothing has changed). So P3 is a shipping-format question: who controls what the sRGB screen sees?
+
+<P3TwoWaysToShip />
+
+**Route 1 — the bare wide literal.** Write `oklch(0.6478 0.2055 251.06)` and you're done: P3 screens (where the browser composites wide — Safari and Chrome on wide-gamut displays; Firefox's coverage still varies by platform) render the extra chroma, sRGB screens clip. For _this_ color the clip is genuinely mild — ΔEok 0.012, hue barely moves — because chapter 6's rule cuts both ways: damage scales with the overshoot, and a chroma-only overshoot at mid lightness clips gently. But the engine doesn't get to choose gentle cases; ship a wide light yellow this way and you're back at chapter 6's salmon-turned-red.
+
+**Route 2 — the guarded upgrade.** Emit the sRGB value you designed, then re-declare inside `@media (color-gamut: p3)` — a media query that's been Baseline widely available since February 2023. Now both renderings are designed: sRGB screens get a color that was gamut-mapped at build time by your own algorithm (chapter 6's conclusion — if chroma reduction is what you want, run it yourself), and P3 screens get the upgrade. You can spell the wide value as an `oklch()` literal or as `color(display-p3 0.202 0.553 0.991)` — same color, and `color()` has the same green support status; the `oklch()` spelling keeps one syntax across both blocks.
+
+One honest measurement before you budget a P3 pass: it only pays where the ramp is pressing the tent. At dotUI's default accent — L 0.6478, hue 251 — the sRGB ceiling is C 0.1887 and the P3 ceiling 0.2097, eleven percent more room. But the shipped chroma is 0.1337 — 71% of the _sRGB_ ceiling. That's a taste cap, not a gamut clamp, and an upgrade that preserves the ramp's percent-of-ceiling doesn't even leave sRGB. P3 pays at the points chapter 12 found sitting _on_ the boundary — Radix's blue 9 and yellow 9 at 100% of their ceilings — and it pays most where sRGB is stingiest: at L 0.65 the biggest P3 chroma gain is around hue 150, the greens, at +40%. Which answers chapter 19's parting question — what P3 buys a chart: categorical palettes lean on mid-lightness hue spread, exactly where the green quadrant of sRGB runs out first, so a P3 block buys chart series real separation, not just vividness.
+
+## Color math at use time
+
+Three CSS functions now do, in the browser, work this course has been doing in `culori`. Each one ships a chapter of this course — and each has a support status that deserves plain statement.
+
+**`color-mix()`** — Baseline widely available since May 2023, and per CSS Color 5 it defaults to Oklab when you don't name a space (chapter 7 taught you to name it anyway). This is chapter 18's computed-shift strategy as one declaration: `color-mix(in oklab, var(--accent-500), black 8%)`. Chapter 18's conviction carries over unchanged: the mix is mode-blind, so the sign must flip per mode — a `.dark` override, or the `light-dark()` composition below.
+
+**Relative color syntax** — the precision tool. `oklch(from var(--accent-500) calc(l + var(--hover-shift)) c h)` adjusts one channel and holds the others, which `color-mix()` can't do (mixing toward black drags chroma along):
+
+<RelativeHoverOneLiner />
+
+Support, stated plainly: RCS is Baseline **newly available** — Safari 18 completed the set on September 16, 2024 (Safari 16.4, Chrome 119, and Firefox 128 had shipped the basics earlier), so the widely-available clock doesn't run out until March 2027, and the early shipments had real gaps (`currentColor` as an origin only landed in Chrome 131, Firefox 133, Safari 18). If your CSS ships to an audience you don't control, this is the one function in this chapter that earns an `@supports (color: oklch(from red l c h))` gate with a pre-baked step behind it.
+
+**`light-dark()`** — chapter 17's mode-alias table as a function:
+
+<LightDarkFlip />
+
+Baseline **newly available** since May 2024. Two fine-print facts decide whether you can use it: it returns nothing without `color-scheme` set (the function reads the _used_ color scheme, not the media query), and a class-based theme switcher — dotUI's `.dark` — still works by setting `.dark { color-scheme: dark; }`, one line replacing the whole re-declaration block. The trade is real, though: `light-dark()` takes exactly two values, so chapter 9's high-contrast third column has no seat at this table — a `[data-theme]` block scales to N modes; the function stops at two.
+
+And the function CSS _almost_ has: `contrast-color()`, which picks a legible text color for any background. It's shipped across all three engines — Chrome 147, Firefox 146, Safari 26 — Baseline newly available since April 2026, and, read the fine print: it returns whichever of **black or white** wins the WCAG 2 ratio. That is, character for character, the rule chapter 17 convicted in dotUI's `fg-on-*` generator: the one that picks black over `#4992dd` while APCA votes white, wrong across the entire L 0.56–0.71 band where chapter 12 put the solids. The platform standardized the bug. Pairing stays a build-time job.
+
+## Where the build line sits
+
+That last sentence generalizes into the chapter's real boundary. Everything CSS's new math does is _derivation_ — take a value that exists and bend it. What it cannot do is _verify_: no `@media` query knows whether the derived hover clears 4.5:1, whether the palette survives a deutan filter, whether the ramp's lightness is monotonic. Every guarantee this course has built is a solved constraint — bisection under the gamut tent (ch 12), the dual-meter pairing check (ch 17), the CVD gate (chs 9, 19), the dark second pass (ch 16) — and solving needs a solver. The engine runs at build time; the file it writes may contain runtime derivations, but only ones the engine already checked in every mode they'll run in.
+
+That's the rule that decides each technique's place: a `color-mix()` hover is shippable because the engine computed both modes' results and verified them before emitting the line. A `contrast-color()` label is not, because the pick happens where no checker can see it. Runtime math is a distribution format, never a design tool.
+
+## The lab
+
+One small theme — four neutrals, one accent, its states — emitted every way this chapter discussed. The left panel is the actual file, color-coded by which decision produced each line; the right panel resolves it, with the contracts read off chapter 8's two meters.
+
+<EmittedCssInspector />
+
+Worth doing, in order:
+
+- **Read the file at rest.** Pre-baked steps, `.dark` block: the shape of dotUI's shipped registry. Note what the dark block _doesn't_ contain — no `--accent-500` line. Chapter 16's surviving solid is legible as an omission in the diff.
+- **Switch states to `color-mix()`.** Two primitives disappear, two aliases become expressions — and a `.dark` override appears at the bottom, because the mix's sign is a mode fact (chapter 18). Count the declarations: computing states didn't shorten the file much once it was honest about modes.
+- **Switch modes to `light-dark()`.** The `.dark` block collapses into per-token pairs and one `color-scheme` line — and the two signed `color-mix` overrides fuse into one line mixing toward `light-dark(black, white)`. Same resolved paint, fewest declarations. The cost isn't in this file: it's the third mode this file can no longer express.
+- **Turn on the P3 upgrade with steps, then with `color-mix()`.** Same one-line media block, different meaning: with pre-baked steps the hover keeps pointing at sRGB values (on a P3 screen, rest upgrades and hover doesn't — watch the chips), with computed states the derivations follow the upgrade for free. Runtime math's honest advantage isn't fewer lines; it's that derived values track their source through blocks the author didn't foresee.
+- **Check the readouts on every configuration.** White-on-accent sits at 3.26:1 in every one of them — chapter 17's pairing bug is a constant of this theme, untouched by any shipping technique. Syntax can't fix what generation didn't solve.
+
+## The decision this unlocks
+
+This is Part 2's last chapter, so the decision is the contract everything since chapter 10 was building toward: **what the rewritten engine emits.** What dotUI emits today, read from the registry: `colors.css` — auto-generated `:root` and `.dark` blocks of `oklch()` primitives (the dark block being chapter 16's convicted reversed ramp) — and `theme.css` — a hand-written `@theme` of 83 aliases, five chart variables, two `color-mix()` shine overlays, and nothing else: no P3 block, no alpha scales, no `light-dark()`, no fallbacks (correctly — Tailwind v4's floor already assumes the syntax).
+
+The emitted-CSS contract, stated as commitments:
+
+1. **Two tiers, two files, oklch literals.** Generated primitives per mode (`:root`, `.dark` — real dark values from chapter 16's second pass, not a reversal), static `@theme` aliases; no hex fallbacks on the web target. Chapter 18's alpha twins, when they land, are just more per-mode primitives in these blocks — each mode's alphas solved over that mode's page background, the dark ones over the dark page, never over black. Email output, if ever, is a separate format with separate values — not fallback lines.
+2. **Every emitted value passed the gates.** Everything in the file — including both sides of any `light-dark()`, both branches of any media block, every `color-mix()` result in every mode — was produced and verified by the engine first. The file contains no color the checker never saw.
+3. **P3 is a second gamut pass behind `@media (color-gamut: p3)`.** Chapter 12's two-tents decision lands here: design against sRGB, re-solve chroma against P3 where the ramp pressed the boundary, emit the diff as upgrade lines. Never a bare wide literal — the sRGB rendering is designed, not clipped.
+4. **Runtime math is allowed as a distribution format, signed and gated.** Computed states may ship as `color-mix()`/RCS lines when they reproduce the designed steps within a JND (measured here: ΔEok 0.004) — always with per-mode signs, and RCS behind `@supports` until its Baseline clock runs out. `contrast-color()` never ships: the platform standardized chapter 17's bug.
+
+That closes Part 2. The engine now has a spec end to end: slots and guarantees (10), three curves (11–13), intake (14), neutrals (15), the dark pass (16), names and pairing (17), states and status (18), chart palettes (19), and the file that carries all of it (20). What's left is calibration — Part 3 reads five shipped systems against this spec, starting with the one this course has been measuring all along: Radix.
+
+## Check yourself
+
+1. A teammate adds `--brand: #4992dd;` directly above `--brand: oklch(0.6478 0.1337 251.06);` "for older browsers." Why is that hex line dead code, what actually happens in a browser without `oklch()` support, and where would a fallback have to live to work?
+2. You want a more vivid accent on P3 screens. Name both shipping routes, what each one hands an sRGB screen, and which of the two chapter 6 already convicted — including why this chapter's blue got away with it anyway.
+3. Your hover is one line: `color-mix(in oklab, var(--accent), black 8%)`, no overrides. What does it do in dark mode, and what are the two shipped ways to give the shift a per-mode sign without JavaScript?
+
+## Further reading
+
+- [Tailwind CSS — Theme variables](https://tailwindcss.com/docs/theme) — how `@theme` turns `--color-*` variables into utilities and `:root` custom properties, and when `inline` is required; dotUI's `theme.css` is this document applied.
+- [CSS Color 5](https://www.w3.org/TR/css-color-5/) — `color-mix()` and relative color syntax from the spec: the Oklab default, channel resolution, and the `from` grammar.
+- [MDN — Using CSS custom properties](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_cascading_variables/Using_CSS_custom_properties) — the substitution model this chapter's architecture rests on, including the invalid-at-computed-value-time behavior that kills hex fallback lines.
+- [MDN — `light-dark()`](https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark) — the two-value mode function, its `color-scheme` requirement, and its Baseline status.
+- [Can I email — modern color syntax](https://www.caniemail.com/features/css-modern-color/) — the 21% number, per client; the page that decides where hex still rules.
