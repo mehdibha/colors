@@ -176,7 +176,7 @@ export const curriculum: Part[] = [
         slug: 'spectrum-leonardo',
         number: 24,
         title: 'Adobe Spectrum & Leonardo',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'geist',
