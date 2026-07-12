@@ -1,0 +1,108 @@
+---
+title: 'Tailwind CSS'
+description: "Case study #2: breadth over guarantees. Twenty-six families on one OKLCH skeleton, jobs assigned by convention instead of contract, the P3 announcement audited value by value — and the naming ergonomics worth stealing even though dotUI's engine will promise more."
+part: 3
+question: 'Twenty-six families ride one lightness skeleton — where does it hold, where does it bend, and what does it never promise?'
+---
+
+import { TailwindSkeletonPlot } from '@/components/playgrounds/tailwind-skeleton-plot'
+import { Gray500Verdict } from '@/components/playgrounds/gray-500-verdict'
+import { YellowHuePath } from '@/components/playgrounds/yellow-hue-path'
+import { P3Census } from '@/components/playgrounds/p3-census'
+import { DarkByStepSwap } from '@/components/playgrounds/dark-by-step-swap'
+
+Radix was depth: thirty-one scales, half the values spent on alpha insurance, a written guarantee to hold the whole thing to. Tailwind is the opposite pole — the palette this series keeps finding under other systems' floors, and it ships no guarantee at all. It doesn't even ship a semantic layer; chapter 17's shadcn tokens exist because Tailwind left that job to its users, and chapter 18 caught dotUI's own status colors hardcoding Tailwind hexes. This chapter reads the shipped file — `theme.css` at v4.3.2 — and asks what a system with no contracts got so right that everyone builds on it anyway.
+
+## The artifact
+
+One file, one block. The whole palette is 286 `oklch()` literals in the `@theme` block chapter 20 dissected: 26 hue families × 11 steps. The docs describe the grammar in one sentence: "Every color in the default palette includes 11 steps, with 50 being the lightest, and 950 being the darkest."
+
+The 286 took three releases to accumulate, and each release is a lesson. **v3.3 (March 2023)** added the 950 step — the request came, in the announcement's words, "usually because someone is building a dark UI," and the same post says "we optimized `950` for high contrast text and tinted control backgrounds." Hold onto that sentence: it is the only step in the entire system whose job is written down anywhere. **v4.0 (January 2025)** regenerated everything from `rgb` to `oklch` — audited below. **v4.2.0 (February 2026)** quietly added "four new neutral color palettes" — mauve, olive, mist, taupe — bringing the neutral count to nine. Two of those names also sit in Radix's gray menu; the pairing doctrine that gives Radix's names their meaning did not make the trip.
+
+And that's the entire product. No generator, no alpha twins, no job table, no contrast targets. Where Radix ships machinery, Tailwind ships a naming convention: even alpha is derived at use time — `bg-blue-500/50` compiles to `color-mix(in oklab, ${value} ${alpha}, transparent)` (verbatim from `utilities.ts`), chapter 18's unpinned runtime mix as the _only_ alpha story.
+
+## Jobs by convention
+
+Chapter 10 called Tailwind's dialect "jobs-by-convention," and reading the docs shows how literal that is. There is no job table to quote. The jobs live in the examples: the docs' own card is `bg-white` with `text-gray-900` headlines and `text-gray-500` body copy, form placeholders are gray-400 by habit, buttons are 500 or 600 with white text. Everyone knows 50 is the subtle background and 900 is the text ink — but "everyone knows" is the load-bearing phrase. The conventions were learned from examples and from each other's code, and nothing enforces them.
+
+So check one. The muted-text convention, against chapter 8's meters:
+
+<Gray500Verdict />
+
+`text-gray-500` on white scores 4.84:1 — it passes AA, by 0.34. But watch how little protection the convention gives: the same class on a `gray-100` card drops to 4.39 and fails; the placeholder-gray habit at 2.60 was never close; and olive-500 — a family added in v4.2, slotted into the same numeric grammar — fails on white at 4.25 while gray-500 passes. Same step number, same conventional job, different verdict, and no part of the system says so. The word "contrast" does not appear once in the v4 colors documentation. Radix's warranty had a gap chapter 21 measured; Tailwind's warranty is that there isn't one.
+
+## The skeleton
+
+Now the structural claim — chapter 11 filed Tailwind under philosophy one, lightness-anchored, on the strength of two families. Here is all of it, every step of every family, plotted from the shipped values:
+
+<TailwindSkeletonPlot />
+
+Worth doing, in order:
+
+- **Read the ends.** At 50 and at 950, all seventeen chromatic families sit within ±0.03 L of the median — a genuinely shared skeleton, exactly where the background and text jobs live. The easing is chapter 11's: blue spends 0.038 L on its first gap, 0.077 mid-scale, 0.097 on the last stride.
+- **Read the middle.** At 400 only five of seventeen families stay within ±0.03; at 500 the spread is 0.21 L, indigo at 0.585 to yellow at 0.795. Blue and red hold formation (0.623, 0.637) while the whole high-cusp arc floats up — yellow, amber 0.769, lime 0.768, green 0.723. That's chapter 12's tent shaping the palette: the vivid middle bends per hue toward each hue's chroma peak, precisely the crack chapter 11 said becomes the hand-tuned philosophy's whole argument. Tailwind is anchored at the ends and hand-bent in the middle — the hybrid posture, shipped.
+- **Toggle the neutrals in.** The nine grays ride a visibly _lower_ ladder mid-scale — gray-500 sits at L 0.551 where the chromatic median is 0.685 — because a neutral's 500 is muted text and a chromatic 500 is a button fill. The job conventions are baked into the geometry, even though they're written nowhere.
+- **Walk the 500 column and read the white-text ratios.** The "500 is your brand button" habit has no floor under it: only indigo-500 clears 4.5:1 with white text (4.58), blue sits at 3.76, and nine of seventeen families fail even the 3:1 large-text bar — yellow-500 at 1.91:1. The working convention is really "600 for white-text solids," and it only works for the red-through-rose arc; nothing in the system tells you any of this.
+- **Toggle the contrast-anchored ghost.** This is what philosophy two would do to this palette: every step re-solved to emit gray's luminance at that step, holding each family's chroma and hue. The fan collapses onto a single contrast ladder — and yellow-500 falls from L 0.795 to about 0.55, a mustard. Tailwind chose names-stay-vivid over ratios-stay-fixed, which is a defensible choice; the indefensible part is only that no document tells you which promise you didn't get.
+
+## The bends nobody sees
+
+The same hand that bent the middle of the L skeleton bent the hue column, and chapter 13 already measured the headline number. Here it is in the shipped file, next to what refusing to bend would have shipped:
+
+<YellowHuePath />
+
+Yellow runs from h 102.2 at the 50 step to h 53.8 at 950 — a 48-degree sweep ending at a numerically _orange_ hue — because frozen at 102° those same steps render olive. Amber sweeps −49.6°, orange −37.4°, blue drifts +13.3° violet-ward and collects chapter 13's dark-chroma dividend. The point for a system review: this per-family policy exists only _in the data_. `text-yellow-900` gives no hint that its hue left the family; the knowledge is unrecoverable from the API, which is exactly what chapter 13's rewrite spec — bend defaults as per-family, documented data — is designed to fix.
+
+## "Modernized P3 color palette," audited
+
+The v4.0 announcement makes two checkable claims. One: "We've upgraded the entire default color palette from `rgb` to `oklch`, taking advantage of the wider gamut to make the colors more vivid in places where we were previously limited by the sRGB color space." Two: "We've tried to keep the balance between all the colors the same as it was in v3."
+
+<P3Census />
+
+Claim one verifies, with a number: 95 of the 286 values sit outside sRGB — every chromatic family participates, no neutral does, and all 286 fit inside P3. The shipping format is the one chapter 20 convicted: bare wide literals, no `@media (color-gamut: p3)` guard, so an sRGB screen gets the browser's channel clip. Tailwind gets away with it the way chapter 6 predicted mild cases would: the overshoots are chroma-only and modest — the worst clip is ΔEok 0.026 at yellow-400, and only four values exceed the 0.02 just-noticeable difference. The palette is designed slightly beyond sRGB on purpose, gambling that the clip is cheaper than a second block. For 95 hand-checked values, the gamble holds; chapter 20's point stands that an engine generating from arbitrary seeds doesn't get to hand-check.
+
+Claim two verifies more precisely than the sentence promises. Convert v3's hexes and compare: blue-500 kept OKLCH L to three decimals (0.623), red-500 too (0.637), yellow-500 (0.795), green-500 (0.723) — and the gamut headroom went entirely to chroma, blue C 0.188 → 0.214, red 0.208 → 0.237, green 0.192 → 0.219. The regeneration kept the skeleton and re-spent the vividness. That's a migration discipline worth naming: same perceived structure, upgraded saturation, verifiable with a per-step ΔEok bound.
+
+## Dark mode is an index swap
+
+Chapter 16 demanded a second design pass. Tailwind's answer is documented in one sentence: "Use the `dark` variant to write classes like `dark:bg-gray-800` that only apply a color when dark mode is active." One palette, both modes — dark mode means picking _different steps_, per element, by hand:
+
+<DarkByStepSwap />
+
+The docs' example makes good picks — white text on gray-800 clears 14.7:1, the 500 → 400 body-text swap clears 5.6:1 — and that's the honest summary of the whole approach: it works when the human indexing the ladder works. The 950 step exists because dark UIs ran out of ladder (v3.3's stated motivation), which is telling — under dark-mode pressure, Tailwind's move was to make the _one_ ladder longer, not to design a second one. Chapter 16's findings — the designed wider dark gaps, the yellow that reverses, the elevation flip — have no machinery here. Every `dark:` class in every codebase is a tiny unreviewed re-derivation of chapter 16, distributed across millions of hands.
+
+## Why it won anyway
+
+Everything above is a missing guarantee, and none of it stopped this palette from ending up underneath everything from shadcn's tokens to dotUI's own status colors. Three reasons, all real:
+
+**The grammar.** `bg-blue-500/50` carries family, step, and alpha in five tokens. The names are the API: flat, predictable, autocomplete-friendly, learnable from one example. Radix asks you to internalize twelve job descriptions before the names make sense; Tailwind asks you to count to 950 by hundreds. Chapter 17 spent a whole chapter on naming grammar — Tailwind's numeric tier is the most successful naming grammar ever shipped in this domain, precisely _because_ it promises nothing it would have to explain.
+
+**The defaults are genuinely good.** The skeleton discipline is real, the hand bends are the same moves Radix and Stripe made, and the v4 regeneration was executed with measurable care. This is not a naive palette that got lucky — it's chapter 11's mature hybrid with the contracts amputated.
+
+**Ubiquity compounds.** shadcn's semantic layer, dotUI's status seeds, every tutorial and starter — the palette is the substrate other systems assume. Good-enough at every slot beats perfect-at-twelve when the user is starting from a blank `div`.
+
+## The steal list
+
+What dotUI's rewrite takes, judged against Part 2's spec:
+
+1. **Steal the naming grammar for the primitive tier.** Family-step numbers, slash-alpha modifiers — primitives that read like Tailwind cost new users nothing. The contracts live one tier up, in chapter 17's semantic names; the numerics stay the friendly, promise-free face they are here.
+2. **Steal the skeleton posture, but write it down.** Ends-tight, middle-bent-per-hue is the right default answer to chapter 11 — Tailwind proves it scales to 26 families. The rewrite encodes the bends as per-family curve data (chapters 12–13) instead of silent hand edits, so `text-yellow-900`'s hue policy is inspectable.
+3. **Steal the balance-preserving regeneration.** v3 → v4 kept L to three decimals and re-spent chroma. Make that a stated engine policy for version upgrades: structure invariant, vividness upgradeable, enforced by a per-step ΔEok bound in CI.
+4. **Skip jobs-by-convention.** The olive-500 lesson: a family entered the system and slid under a bar nobody wrote down. Chapter 10's contract — named jobs, named backgrounds, named meters — runs on every family, including the ones added later, or the additions aren't safe.
+5. **Skip bare wide literals.** Tailwind's 95 unguarded values survive on hand-checked mildness. An engine that generates from arbitrary seeds ships chapter 20's guarded P3 pass, because it can't eyeball 95 gambles per palette.
+
+Next: the system that made the opposite trade on every axis at once — Material's HCT, where the tone number _is_ the contract and hue constancy is enforced on principle.
+
+## Check yourself
+
+1. `text-gray-500` on white passes 4.5:1. Name two conventional pairs a reader would assume are just as safe that actually fail, and explain what Radix ships that makes the same question answerable without opening a contrast checker.
+2. The v4.0 announcement claims more vivid colors via the wider gamut, with the v3 balance kept. What did measurement find for both claims — and what exactly does an sRGB screen do with the 95 values involved?
+3. Describe the shape of Tailwind's lightness skeleton — where it's tight, where it fans, and why — and what happened to yellow-500 when the flagship's contrast-anchored ghost re-solved it.
+
+## Further reading
+
+- [Tailwind CSS — Colors](https://tailwindcss.com/docs/colors) — the 26-family reference, the 11-step sentence, and the example cards whose class lists are the closest thing to a written job table.
+- [Tailwind CSS v4.0 announcement](https://tailwindcss.com/blog/tailwindcss-v4) — the "Modernized P3 color palette" section this chapter audits: both quoted claims are here.
+- [Tailwind CSS v3.3 announcement](https://tailwindcss.com/blog/tailwindcss-v3-3) — the 950 origin story: the dark-UI request, the tinted-black grays, and the one written job description in the system.
+- [`tailwindcss` — `theme.css` at v4.3.2](https://github.com/tailwindlabs/tailwindcss/blob/v4.3.2/packages/tailwindcss/theme.css) — the shipped file; every number in this chapter recomputes from it.
+- [Tailwind CSS v4.2.0 release notes](https://github.com/tailwindlabs/tailwindcss/releases/tag/v4.2.0) — "Add mauve, olive, mist, and taupe color palettes": the four neutrals that arrived without a gate.

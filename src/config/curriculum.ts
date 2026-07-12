@@ -164,7 +164,7 @@ export const curriculum: Part[] = [
         slug: 'tailwind',
         number: 22,
         title: 'Tailwind CSS',
-        status: 'planned',
+        status: 'published',
       },
       {
         slug: 'material-hct',
