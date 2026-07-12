@@ -8,7 +8,7 @@ The site's deeper purpose: the maintainer is learning color deeply enough to rew
 
 Claude drafts chapters and playgrounds, but a chapter flips to `published` only after the maintainer has worked through it: asked their questions (**questions become revisions** — reshape the chapter until it's clear), done a voice pass on the prose, and can answer its "Check yourself" questions. Drafting may run ahead of publishing; publishing follows the maintainer's pace. If they're skimming instead of verifying, say so — that's the failure mode this workflow exists to prevent.
 
-Status (2026-07-09): chapters 1–2 are live but **not yet passed by the maintainer** — expect revision requests against them. Next to draft: chapter 3, `gamma-and-linear-light`.
+Status (2026-07-12): all 25 chapters are drafted. Chapters 1–16 are live on colors.dotui.org (merged to main); chapters 17–25 sit on the `chapters` branch (draft PR #5). **No chapter has passed the maintainer's publish gate yet** — expect revision requests against any of them, and merging PR #5 (= deploying 17–25) is the maintainer's call after their pass. Drafting-pipeline state lives in `.pipeline/` (gitignored).
 
 ## Curriculum
 
