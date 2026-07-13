@@ -1,0 +1,104 @@
+---
+title: 'Material 3 & HCT'
+description: 'Case study #3: the scientific bet. Google built a new color space — CAM16 hue and chroma welded to CIELAB lightness — so that accessibility becomes geometry: keep two roles enough tones apart and the contrast ratio follows by arithmetic. The tone-delta guarantee re-measured (it has one soft spot), roles read as tone assignments, dynamic color priced — and the case for stealing the mechanism while skipping the space.'
+part: 3
+question: 'Pick a key color and two tones — does the tone gap alone predict the contrast you measure?'
+---
+
+import { EqualToneEqualContrast } from '@/components/playgrounds/equal-tone-equal-contrast'
+import { ToneDeltaRule } from '@/components/playgrounds/tone-delta-rule'
+import { M3RoleCard } from '@/components/playgrounds/m3-role-card'
+import { HctToneExplorer } from '@/components/playgrounds/hct-tone-explorer'
+import { SeedSchemeStrip } from '@/components/playgrounds/seed-scheme-strip'
+
+Radix's answer to Part 2 was a hand: thirty-one scales of applied taste. Tailwind's was a convention: one skeleton, no promises. Material's answer is the strangest and the most ambitious of the three — if the rules you care about aren't properties of the space you work in, **build a space where they are.** Google wrote a new color space, HCT, whose entire design goal is that the system's central accessibility rule stops being a check you run and becomes a subtraction you can do in your head.
+
+## A space with an agenda
+
+The definition is one sentence in the source, and it's load-bearing: "A color system built using CAM16 hue and chroma, and L\* from L\*a\*b\*." Two parents, one contribution each.
+
+From **CAM16** — the successor to the CIECAM02 appearance model — HCT takes hue and chroma. The blog post explaining the system says why they didn't just take CIELAB's: "when we tried using it in design, L\*a\*b\* was too inconsistent perceptually." You've met that inconsistency — chapter 5 watched CIELAB bend a blue fade toward purple; CAM16's hue is what "measured hue" looks like when the model is good. (OKLab exists because of the same complaint, and was fitted to CAM16's own uniform-space data — hold that thought for the steal list.)
+
+From **CIELAB** it takes the third axis unchanged: "HCT's lightness measure, tone, is the same as L\*a\*b\*'s lightness." Not similar — the same. Convert the baseline seed `#6750a4`: HCT reports tone 40.08, culori's `lab65` reports L\* 40.083. Radix blue 9 `#0090ff`: tone 59.128, L\* 59.127.
+
+Why weld those two together? Because of what L\* is: chapter 3's meter, a pure function of the exact relative luminance Y inside WCAG's contrast formula. Chapter 11 found a construction that exploits this — anchor a skeleton in L\* and the ratio locks — and called it the bridge. HCT promotes the bridge from a construction trick to an axis of the space. Fix the tone and you have fixed the WCAG-relevant quantity, no matter what the other two knobs do:
+
+<EqualToneEqualContrast />
+
+## Subtraction becomes a contrast checker
+
+That's the killer feature, and the source states it as a rule: "A difference of 40 in HCT tone guarantees a contrast ratio >= 3.0, and a difference of 50 guarantees a contrast ratio >= 4.5." The blog is blunter: "Contrast is guaranteed simply by picking colors whose tone values are far enough apart—no complex calculations required."
+
+Read what that does to chapter 11's taxonomy. Leonardo anchors contrast per ramp — declare targets, solve each swatch against one background. HCT anchors it one level deeper, in the space itself: _any_ two colors, any hues, any chromas, and the tone gap alone bounds their ratio. Accessibility policy compresses to "keep these roles N tones apart," enforced by construction — the strongest version of contrast-anchoring in this course.
+
+Now hold the rule to this course's standard and measure it. A tone difference doesn't pin a ratio exactly — the ratio depends on where the pair sits on the axis, because of the +0.05 flare terms — so the deltas are engineered floors. Sweep them:
+
+<ToneDeltaRule />
+
+Δ40's worst case is 3.170:1, at tones 60/100 — the guarantee holds everywhere, with margin. Δ50's worst case is 4.484:1, at exactly one spot: tone 50 against tone 100. The sentence in the source promises ≥ 4.5 and the space delivers 4.48 — a miss of 0.016, at the white end, on the one pair a designer would actually reach for ("mid-tone button, white text"). The blog's claim that the principle "works consistently for any pair of colors" is _almost_ true. Same finding class as Radix's dark Lc 90 in chapter 21 — a documented number the artifact doesn't quite contain — though Material's miss is a hair on one pair, not six Lc across nineteen scales. And Material's own role table never trusts the edge: its body pairs run Δ60 and up.
+
+One more boundary, stated plainly: the geometry speaks WCAG 2 and nothing else. Tone deltas bound a ratio of luminances; APCA's Lc is not a function of ΔL\* — it changes with polarity and clamps near black (chapter 8) — so no tone rule for it can exist. A system that bakes its meter into its geometry has also baked in that meter's blind spots.
+
+## Thirteen tones, roles by arithmetic
+
+The working unit above the space is the **tonal palette** — in the source's words, colors "constant in hue and chroma, but vary in tone." Freeze a hue and a chroma, sample the tone axis: the canonical strip is thirteen stops — 0 to 100 by tens, plus 95 and 99 — and the current docs add 98 and note "some palettes include more values" for surface tiers. Chapter 12 met this as chroma strategy one, and here the honesty is in the API contract itself: "The color returned may be lower than the requested chroma. Chroma has a different maximum for any given hue and tone" — the tent, acknowledged in a docstring.
+
+Then the semantic layer of chapter 17, done as arithmetic. Material ships "26 standard color roles organized into six groups," and a role is a _tone assignment_: the docs' own example is that "the algorithm assigns the color tone primary40 to the primary role and the tone primary100 to the on primary role." Every pairing promise in the system — the docs state the floor as "an accessible minimum 3:1 contrast" — is two integers whose difference you can check by subtraction. Dark mode is chapter 16's asymmetric re-pick over the _same_ palettes: primary 40 → 80, never the mirror. And the three contrast levels — standard, medium at 3:1, high at 7:1 — are chapter 9's `prefers-contrast` answer shipped at OS scale, as nothing more than a third and fourth column of tone assignments.
+
+<M3RoleCard />
+
+## The lab
+
+The whole argument, hot. culori has no CAM16, so the strip approximates HCT honestly — the tone axis is exact (it's L\*, which culori speaks), hue and chroma ride CIELAB's LCh instead of CAM16's, and every preset shows the real material-color-utilities palette underneath with the disagreement measured:
+
+<HctToneExplorer />
+
+Worth doing, in order:
+
+- **Read the default.** Violet, ink 100 on paper 40 — the role table's primary button. Δ60 predicts 6.46:1; the rendered pair and the reference pair both measure within a hex-rounding of it. The prediction needed no colors.
+- **Set ink 100, paper 50.** The soft spot, live: the tone math says 4.48 under a written ≥ 4.5, and the real palette's pair measures 4.48 with it. (The approximate strip's hex rounding happens to land a hair above — the miss belongs to the geometry, not to any particular render.)
+- **Drag chroma to zero and back.** Swatches change completely; every contrast number stands still. That's the demo above, generalized: contrast lives on one axis, and the other two are genuinely free.
+- **Check the approximation while you're here.** Worst reference-row disagreement across the presets is ΔEok 0.035 (red, tone 10); most rows sit under 0.01. The residue concentrates in the blues — CIELAB's blue-purple bend from chapter 5, the exact error CAM16 was chosen to iron out.
+- **Sweep a custom hue at high chroma.** The reference row bows out, but predicted-versus-measured stays glued — the guarantee never depended on which hue you picked.
+
+## Dynamic color: chapter 14 at OS scale
+
+Material's front door isn't a brand hex — it's a photograph. The wallpaper is quantized to a candidate set, scored (the blog: colors get "points for colorfulness and how much of the image they represent," and near-monochrome candidates are filtered out), and one winner becomes the **source color**. From it, the scheme's five key colors: primary, secondary, tertiary, neutral, neutral variant.
+
+And here is chapter 14's seed policy, at its most extreme. The default scheme (TonalSpot, from the source) keeps precisely one of the seed's three numbers — the hue. Chroma is policy: 36 for primary, 16 for secondary, 24 at hue +60° for tertiary, 6 and 8 for the neutrals. Tone comes from the role table. Chapter 14 quoted Flutter's documentation admitting the consequence — the seed may not appear in the scheme at all — and the receipts are startling: Spotify's `#1db954` (HCT chroma 69.7) becomes primary `#36693e`, ΔEok 0.237 from the brand. Even Material's own baseline seed `#6750a4` comes out moved (`#65558f`, 0.039) under the default scheme. Fidelity wasn't lost; it was traded, in writing, for a system whose every pairing is guaranteed by construction.
+
+<SeedSchemeStrip />
+
+That trade is also where the palette's signature look comes from. The muted, milky quality of Material You interfaces is not an accident of taste — it's chroma 36, a policy number, applied to every wallpaper on earth.
+
+## The costs, honestly
+
+- **The space is heavyweight.** CAM16 is an appearance model: converting to HCT runs the full model, and converting _back_ runs an iterative solver, with a set of viewing conditions baked into every conversion (white point D65, ~11.7 cd/m² adapting luminance, background L\* 50, average surround). That's a real capability — the repo pitches HCT as a space "that accounts for viewing conditions," and it can re-render colors for a sunlit phone — and it's machinery a web design system will carry forever and use never. OKLCH is three closed-form equations.
+- **The guarantee is engineered, not exact — and single-meter.** Δ50's floor is really 4.484 at one edge, and the whole geometry is denominated in WCAG 2's ratio, inheriting chapter 8's blind spots with no APCA analog possible.
+- **The aesthetic is opinionated.** Policy chroma plus one more principle: tonal palettes hold hue _constant_ — chapter 13's forcing case, decided the other way. Ask HCT for yellow `#ffde03` (hue 99.7, chroma 66) at tone 40 and it delivers chroma 39.3 at the same hue: `#6d5e00`, the olive that Tailwind and Radix bend toward gold to avoid — set the explorer above to hue 94 (that same yellow, on its CIELAB slider) at full chroma and read tone 40. Uniform machinery, uniform look.
+- **It's an OS engine, not a kit.** Wallpaper quantization, scoring, a dislike analyzer that fixes "universally disliked colors," 26-plus roles, four contrast schemes — the machinery earns its weight when the input is two billion wallpapers. A web app whose input is one brand hex is carrying a factory to make one part.
+
+## The steal list
+
+What dotUI's rewrite takes, judged against Part 2's spec:
+
+1. **Steal tone-distance reasoning as the guarantee mechanism.** This is the strongest idea in Part 3: state a contrast promise as a _lightness distance_ and it becomes checkable by subtraction and hue-proof by construction. The bridge is free — L\* is a pure function of WCAG's Y, so the engine can convert any candidate to L\* and enforce "these two roles stay N apart" without adopting HCT: chapter 11's bridge, run wherever the contract needs it.
+2. **Steal roles-as-arithmetic.** Chapter 17's pairing table gets stronger if each promise records the tone distance that backs it, not just a measured ratio — re-aim the hue, re-spend the chroma, and the promise survives because it never depended on either.
+3. **Skip HCT itself.** The honest math: OKLab was fitted to CAM16's own uniform-space data, so the perceptual quality HCT buys with a runtime appearance model is mostly already baked into the engine's working space as three cube roots. Don't read the flagship's blue residue as a counter-argument — that residue is _CIELAB's_ bend, and the lab rides CIELAB only because tone is Lab-native; chapter 5's drift demo already showed OKLab holding the same blue fade straight while CIELAB turned purple. The one thing OKLCH genuinely lacks — a lightness axis that locks WCAG — is exactly what item 1 recovers with one conversion at check time. APCA needs measurement rather than geometry under either space, and chapter 20 ships `oklch()` as a CSS literal while HCT values must be baked to hex by a library on every platform. OKLCH plus explicit checks is 90% of HCT at a fraction of the machinery — and the missing 10% is viewing-condition adaptation dotUI will never use.
+4. **Skip hue constancy as a principle.** Chapter 13's per-family bend table stays. HCT proves constancy scales operationally; the olive proves what it costs. dotUI's users will paste yellows.
+
+Next: Adobe Spectrum and Leonardo — the philosophy HCT bakes into a space, shipped instead as a solver, with the meter itself left switchable.
+
+## Check yourself
+
+1. The tone rule says Δ40 guarantees 3.0:1 and Δ50 guarantees 4.5:1. Which delta holds everywhere with margin, and which one misses its written floor — at which end of the tone axis, and on what kind of pair? And why can a tone difference bound a WCAG ratio in the first place, when OKLCH L can't?
+2. Dynamic color builds a scheme from Spotify green `#1db954`. Which of the seed's three HCT numbers survives into the primary palette, what chroma does primary actually receive, and does the pasted color appear anywhere in the output?
+3. The steal list takes the tone-delta mechanism but not the space. Name the conversion that gives an OKLCH engine the same WCAG lock at check time, and the two needs HCT's geometry can't serve anyway.
+
+## Further reading
+
+- [`hct.ts` — material-color-utilities source](https://github.com/material-foundation/material-color-utilities/blob/main/typescript/hct/hct.ts) — the definition, the L\*-link rationale, and the Δ40/Δ50 guarantee this chapter re-measured, all in one file-level comment.
+- [The Science of Color & Design](https://material.io/blog/science-of-color-design) — Google's own account of why HCT exists: the CAM16 and L\* parentage, the tone-difference contrast rule, and the dynamic-color pipeline.
+- [Material 3 — How the color system works](https://m3.material.io/styles/color/system/how-the-system-works) — source color to key colors to tonal palettes to the 26 roles, including the primary40/primary100 assignment quoted here.
+- [Material 3 — Color roles](https://m3.material.io/styles/color/roles) — the full role vocabulary, the pairing rules, and the 3:1 minimum-pairs claim.
+- [material-color-utilities](https://github.com/material-foundation/material-color-utilities) — the reference implementation; every palette and scheme value in this chapter was computed with it.

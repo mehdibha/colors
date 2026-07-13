@@ -1,0 +1,110 @@
+---
+title: 'Adobe Spectrum & Leonardo'
+description: "Case study #4: the solver. Leonardo inverts every other system's model — declare key colors, a background, and target contrast ratios, and it works backward to the swatches. Contrast becomes an input instead of an audit, themes re-solve when the background moves, the meter is a config option — and the ratio decides the lightness whether the gamut has chroma left there or not."
+part: 3
+question: 'Name the background and the target ratios — what does the solver hand back, and what does it trade away?'
+---
+
+import { KeyColorsAreAnchors } from '@/components/playgrounds/key-colors-are-anchors'
+import { AdaptiveThemeStrip } from '@/components/playgrounds/adaptive-theme-strip'
+import { MeterSwapSolve } from '@/components/playgrounds/meter-swap-solve'
+import { SolverRediscovers } from '@/components/playgrounds/solver-rediscovers'
+import { MiniLeonardo } from '@/components/playgrounds/mini-leonardo'
+import { DeadSpotReceipt } from '@/components/playgrounds/dead-spot-receipt'
+
+Radix answered Part 2 with a hand, Tailwind with a convention, Material with a space. Adobe's answer is a solver. [Leonardo](https://github.com/adobe/leonardo) — the open-source engine under Spectrum's palette — is chapter 11's second philosophy shipped whole: you don't pick colors and check them; you declare what the contrast must be, and the colors are whatever satisfies the declaration. The project's stated goal is exactly that inversion — to use "contrast ratio as the starting point, rather than a post-color-selection auditing process." Nate Baldwin, who built it, had named the need a year earlier: an approach to color selection that _begins_ with accessibility, instead of auditing its way there.
+
+## The model, inverted
+
+Every other generator in this course takes colors in and emits colors. Leonardo's `Color` is a stranger thing — it contains no shippable values at all. Three declarations make a theme:
+
+- A **`Color`** is a name, a list of `colorKeys` — "specific colors to interpolate between in order to generate a full lightness scale of the color" — and a list of target contrast `ratios`. The key colors are the art: they steer what hue and chroma the scale passes through. They are _not_ the output.
+- A **`BackgroundColor`** is the same declaration, marked as the thing everything else is measured against.
+- A **`Theme`** binds them, with global dials: a `lightness` from 0–100 for the background, a `contrast` multiplier over every ratio, a `saturation` dial, and — hold this one — a `formula`.
+
+The machinery underneath is unglamorous and worth knowing. The scale is built as literally as the description says: key colors sorted by lightness, pure white and pure black appended as endpoints (`[white, ...sortedColor, black]` in the source), the whole path interpolated — sRGB by default — and sampled into 3,000 swatches. Then, for each target ratio, a binary search walks the samples until it finds the one whose measured contrast against the background hits the target. Ratios can be negative: `-2` means "2:1 on the _other_ side of the background," which is how a dark theme asks for washes below its surface.
+
+<KeyColorsAreAnchors />
+
+That's the whole trick, and it lands exactly where chapter 14 filed it: the seed policy at its loosest. Your key colors ship only if a target ratio happens to land on one. The swatches are solver output; the declaration is the product. Ask Leonardo "what's our blue?" and the honest answer is a list of ratios and a promise.
+
+## Adaptive by construction
+
+Now the consequence that makes this a system and not a trick. The theme's `lightness` isn't a cosmetic setting — the background color is itself a scale, and lightness indexes into it (`backgroundColorScale[this._lightness]`, verbatim). Move it, and every color in the theme re-solves against the new background, because every color was only ever defined _relative to_ the background:
+
+<AdaptiveThemeStrip />
+
+One declaration produced all three rows. Nobody designed a dark palette — lightness 11 _is_ the dark palette, and blue400 holds 4.5:1 in every row because 4.5:1 is what blue400 means. Even the ramp's direction flipped by itself: solved against near-white, higher contrast means darker; against near-black, lighter. Spectrum's naming carries the same logic — Adobe's own account: "our system is relative to contrast, rather than brightness," so blue-100 is lighter than blue-400 in the light theme, darker than it in the dark theme, and lower-contrast in both. And the `contrast` multiplier turns chapter 9's `prefers-contrast` into arithmetic — it scales each ratio's distance from 1, so a 1:1 wash stays a wash while 4.5 becomes 5.2 at 1.2× — which is how Leonardo's demo lets "end users have the flexibility and control that they need while still upholding the design team's color choices."
+
+Chapter 16 spent a whole chapter convicting the arithmetic flip and demanding a second design. Be honest about how much of that demand the solver meets, because it's a lot — and not all of it. Ask this blue for 8:1 on the dark background and you get `#4fbcff`, oklch(0.760 0.138) — Radix's hand-designed `blueDark11` sits at oklch(0.764 0.126). The glow fix, chapter 16's lift-L-shed-C move, rediscovered by search: the dark room demands light colors, and the sRGB path toward white sheds chroma on the way. Yellow does chapter 16's reversal on its own, too — the 4.5 solve against near-white is a C 0.115 olive, while the dark theme's 8:1 solve is `#cab300` at C 0.159, chroma _up_, because light vivid yellow exists and dark vivid yellow doesn't:
+
+<SolverRediscovers />
+
+What the solver does **not** re-derive: an elevation policy (which lightness indices make a surface ladder is still a design decision), per-job chroma budgets beyond what one key-color path encodes, and chapter 15's tint budgets. The contract half of dark mode falls out of the construction; the taste half is still a human's. Spectrum's team says as much — they built "a single fully adaptive theme" and then generated light, dark, and darkest "by simply optimizing color and contrast." Generated, then optimized.
+
+## The meter is a parameter
+
+Chapter 8 ended with a promise: Leonardo's scoring switch "used to look like a nerd option; it's actually the entire subject of this chapter, exposed as a parameter." Here it is in the constructor: `formula = 'wcag2'` by default, and `'wcag3'` swaps the search's ruler to APCA — the actual `apca-w3` implementation, the same constants as this course's own meter — with targets read as Lc instead of ratios.
+
+<MeterSwapSolve />
+
+A contrast-anchored system doesn't get to be vague about its meter, because the meter isn't checking the output — it _is_ the generator. On the light background the two formulas nearly agree. On the dark one they hand you different palettes: the WCAG solve dutifully hits 4.5:1 and scores around Lc −35 — the demo's mini-solver picks `#357fff`, one hex tick from the real package's `#357eff` at Lc −35.3 — chapter 8's flare-term over-credit baked into every swatch of every dark theme solved under the default formula. The solver guarantees exactly what its ruler measures — nothing more. Anchor to `wcag2` and you've industrialized its blind spots along with its floor; anchor to `wcag3` and you've built compliance-critical output on a candidate, not a standard. Chapter 8's posture doesn't dissolve here; it gets compiled in.
+
+## Spectrum: the deployment
+
+What does this look like run at Adobe scale — "Adobe's portfolio of more than 100 applications," in their design team's words?
+
+The 2019 system was built background-first: "We started by generating our gray system based on target contrast ratios," then every UI color solved against those grays — 4 tints and 11 background shades per theme, 59 swatches, regenerated per theme. The team's stated reason for going adaptive is a perception fact this course met in chapter 16: for contrast to _appear_ consistent across themes, "the actual contrast ratios had to change depending on the brightness of the theme background."
+
+The current system — version 6.0, rebuilt in Leonardo — hardened that into semantics. Each color ships 14 tints and shades, and the index numbers are contracts, not brightness labels: colors at the **700** index meet or exceed 3:1 against `gray-100`, and colors at the **900** index meet or exceed 4.5:1 — chapter 10's job table, denominated in ratios, with the background named. The generation details are the tells of a team that's been burned: contrast targets specified as percentages "so that generated colors wouldn't default to pure black or white," lightness stops synchronized with ratio targets so designers can steer aesthetics without breaking contracts, and an automatic UI kit generator bolted onto Leonardo that emits the labeled swatch grid as an SVG so design kits regenerate with every revision instead of being redrawn. This is the largest contrast-anchored deployment in the industry, and it ships as chapter 20 demands — the continuum is a build-time capability, and what reaches products is a handful of frozen theme outputs.
+
+## The lab
+
+A working mini-Leonardo. The solver is this chapter's own culori implementation of the real mechanics — white → keys → black, sampled, searched — and it reproduces the real package's output to within ΔEok 0.004:
+
+<MiniLeonardo />
+
+Worth doing, in order:
+
+- **Read the defaults.** Leonardo's own README blue, five ratios, background L\* 98 — the same declaration as the three-row demo above, and the same swatches come out within a hex tick (the mini theme's background dial is plain CIELAB L\*, so 98 lands on `#f9f9f9` where Leonardo's own gray scale gives `#f8f8f8`).
+- **Slide the background to 20, then 11.** Every swatch re-solves; the measured column never moves. Somewhere mid-slide the ramp turns inside out — the solver crosses from picking darker-than-background to lighter-than.
+- **Park the background at L\* 50.** The background is `#777777` — chapter 8's almost-passing gray — and the "out of reach" flags light up: against a true mid-gray, _no color on either side_ reaches even 5:1. The solver clamps at white or black and reports the miss. A contrast-anchored system is honest about impossibility in a way an anchored skeleton never has to be.
+- **Switch to the vivid yellow.** Watch the 4.5 and 8 targets: the solved swatches ride the chroma-ceiling column at 100% — the ratio dictated the lightness, and chapter 6's tent decided everything else.
+- **Try the brand purple.** `#635bff`, chapter 14's recurring seed. It ships only if some target's solve happens to land on it — nudge the 400 target and watch the solver walk straight past the brand.
+
+## The critiques, honestly
+
+**Solved colors land on aesthetic dead spots.** The solver optimizes one number. At the lightness a text-grade ratio demands, some hues have almost no chroma to offer — and the solver takes what's there and calls it done:
+
+<DeadSpotReceipt />
+
+Chapter 11 called this output "a dark olive that dutifully passes"; chapter 13 named the rescue (bend the hue toward gold) and chapter 23 showed Material accepting the olive on principle. Leonardo's answer is the key colors — a human can add a mid-dark gold key to steer the path around the dead spot. Which is the honest limit of the whole model: **the solver industrialized the contract, not the taste.** The art moved into `colorKeys` and stayed human.
+
+**The default formula inherits WCAG 2's flaws at generation time.** The meter demo above is the receipt: dark-theme palettes solved under `wcag2` carry chapter 8's over-credited dark pairs in their construction, not just in their audit. The switch exists; the default is the standard, and the standard is the flawed one — chapter 8's trade, unavoidable either way.
+
+**Background-relative colors complicate static export.** Chapter 11 flagged it and it's worth saying precisely: the palette is a _function_, and CSS ships _values_ (chapter 20). "What's our step 400?" has no answer until a background is named; the L skeleton itself is solver output that slides when the background does. The resolution is Spectrum's own: evaluate the function at a few named points — light, dark, darkest — and freeze. You keep adaptive generation; you give up adaptive _runtime_, unless you ship the solver to the client and re-derive chapter 20's entire pre-verification story.
+
+## The steal list
+
+What dotUI's rewrite takes, judged against Part 2's spec:
+
+1. **Steal contrast-as-input — for the steps that carry text.** The hybrid, spec'd: the lightness-anchored skeleton keeps the surface and component steps (chapter 11's cross-hue consistency, tokens as constants), and the text-grade slots — steps 11–12 and every `fg-on-*` pairing — are _solved_, per mode, against that mode's named backgrounds, at build time. That single move turns chapter 17's pairing table from measured-after into true-by-construction, retires the autocontrast bug class outright, and costs nothing chapter 20 cares about: the solve happens before the CSS is written. Chapter 20 already concluded every gate needs a build-time solver — this is that solver, given a second job.
+2. **Steal the switchable meter, with chapter 8's posture pinned as config.** Solve text steps to the WCAG floor (the auditable promise), report APCA alongside, and let a `formula` option exist for the day the candidate becomes a standard. Leonardo proves the architecture: the meter is one function behind an interface, not an assumption smeared across the pipeline.
+3. **Skip the adaptive-continuum runtime.** dotUI ships static CSS to apps that will never grow a background-lightness slider. Spectrum itself freezes three points off the continuum; dotUI freezes two (chapter 16's light and dark passes) plus chapter 9's contrast variants — same architecture, smaller N. Adaptivity lives in the generator, not the bundle.
+4. **Skip contrast-relative naming.** Spectrum's blue-100-flips-meaning-per-theme is coherent _because_ everything at Adobe rides the solver. dotUI's primitive tier already committed to Tailwind's grammar (chapter 22), where names track the ramp; the contrast contracts live one tier up, in chapter 17's semantic names, which is where mode-flipping already happens.
+
+Next, the last case study: Vercel's Geist — what a design system's color story looks like when it's young, opinionated, and shipped by a company whose whole aesthetic is restraint.
+
+## Check yourself
+
+1. A Leonardo `Color` declaration contains hex values, yet chapter 14 filed it under "the seed ships only by accident." What are the `colorKeys` actually for, where do the shipped swatches come from, and why does sliding the theme's `lightness` re-derive every one of them?
+2. The same blue declaration, solved on a dark background: the default formula hands back a swatch at 4.5:1 that APCA scores around Lc −35. Which chapter-8 construction is being industrialized here, and what single constructor parameter changes the outcome — at what standards-status cost?
+3. The steal list takes contrast-as-input for text steps but keeps the anchored skeleton for surfaces. What does full contrast-anchoring cost that made the hybrid the better spec — and what does Spectrum itself do that reconciles "adaptive by construction" with shipping static CSS?
+
+## Further reading
+
+- [adobe/leonardo](https://github.com/adobe/leonardo) — the source this chapter's mechanics were read from: `Color`, `BackgroundColor`, and `Theme` in `contrast-colors`, the white-keys-black scale, the 3,000 swatches, the binary search, and `formula: 'wcag2' | 'wcag3'`. The live tool is [leonardocolor.io](https://leonardocolor.io).
+- [Nate Baldwin — Adaptive Color in Design Systems](https://medium.com/thinking-design/adaptive-color-in-design-systems-7bcd2e664fa0) — part one of the three-part series that motivates the whole model (part two, "Introducing Adaptive Color Palettes," walks the same solve mechanics this chapter's demos run live — skipped here for scope): why audit-then-fix fails, and what "begins with accessibility" means.
+- [Nate Baldwin — Adaptive Color in Spectrum, Adobe's Design System](https://medium.com/thinking-design/adaptive-color-in-spectrum-adobes-design-system-feeeec89a2c7) — part three: the 2019 deployment, grays generated first, and the ratios-must-change-per-theme argument quoted here.
+- [Reinventing Adobe Spectrum's colors](https://adobe.design/stories/design-for-scale/reinventing-adobe-spectrum-s-colors) — the version 6.0 rebuild: 14 indices per color, the 700/3:1 and 900/4.5:1 contracts against gray-100, and the single-adaptive-theme-to-three-themes pipeline.
+- [Spectrum — Color fundamentals](https://spectrum.adobe.com/page/color-fundamentals/) — the shipped doctrine: contrast-relative indices and per-theme color values, as Adobe documents them for product teams.

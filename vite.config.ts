@@ -17,6 +17,7 @@ export default defineConfig({
     include: [
       'culori',
       'react-aria',
+      'react-aria-components/Slider',
       'react-aria-components/ToggleButton',
       'react-aria-components/ToggleButtonGroup',
     ],

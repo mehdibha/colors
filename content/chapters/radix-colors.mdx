@@ -1,0 +1,110 @@
+---
+title: 'Radix Colors'
+description: 'Case study #1: the jobs system at industrial scale. Thirty-one hand-tuned scales with alpha twins, a dark second design, and a surgical P3 remaster — the documented Lc guarantee re-measured across every scale, and a steal list for the dotUI rewrite.'
+part: 3
+question: 'Pick any step of a real Radix scale — what job does it hold, and does the documented contract verify?'
+---
+
+import { RadixScaleExplorer } from '@/components/playgrounds/radix-scale-explorer'
+import { StepNineLineup } from '@/components/playgrounds/step-nine-lineup'
+import { SolidVsAlphaTwin } from '@/components/playgrounds/solid-vs-alpha-twin'
+import { GrayPairingSwap } from '@/components/playgrounds/gray-pairing-swap'
+import { P3RemasterReceipts } from '@/components/playgrounds/p3-remaster-receipts'
+
+Part 2 ended with a spec. Part 3 holds it up against five shipped systems, and Radix Colors goes first because it's been this course's lab rat since chapter 10 — the 12-job table, the tinted grays, the alpha twins, the surviving solids all came from its published hexes. This chapter stops borrowing examples and reads the whole artifact: what Radix actually ships, which of its documented promises survive measurement, and what the dotUI rewrite should take versus leave.
+
+## The artifact
+
+Count what's in the package, from the source files. Thirty-one scales — six grays and twenty-five colors. Each scale is 12 steps, in a light and a dark version, each with a translucent alpha twin, each published in sRGB and in display-p3. That's 31 × 12 × 2 × 2 × 2 = 2,976 color values, plus the static `blackA`/`whiteA` overlay scales for another 48.
+
+And here is the fact that frames everything else: **there is no generator in the box.** The npm package exports constants. Every one of those values was either placed by hand or derived from something placed by hand, and the package's entire API is "here they are." Radix is chapter 11's third philosophy — the hand-tuned reference — shipped at industrial scale, and this chapter is about what that buys and what it costs.
+
+## Jobs, now with the warranty checked
+
+Chapter 10 already quoted the job table — twelve steps, twelve written responsibilities, from app background to high-contrast text — and the split that organizes them: 9/10 are the solid pair (step 9 "the purest step"), 11/12 the text pair. What it didn't do is check the warranty at scale. The docs state it in one sentence: steps 11 and 12 "are guaranteed to Lc 60 and Lc 90 APCA contrast ratio on top of a step 2 background from the same scale."
+
+Run chapter 8's meter — the apca-w3 0.0.98G-4g constants — over all 31 scales:
+
+- **Light mode: the guarantee holds everywhere.** Step 11 on step 2 runs from Lc 66.2 (orange) to 76.9 (violet); step 12 from 91.7 (sky) to 100.0 (olive). Every scale clears its bar, with margin.
+- **Dark mode: step 11 clusters at the bar.** Sixteen scales land between Lc 60.0 and 61.0 — sand at 60.0 exactly, indigo just past the band at 61.03. Nobody eyeballs sixteen scales onto a target to the first decimal; the dark text steps were _solved_ to Lc 60. The guarantee isn't marketing over taste — it's visibly the constraint the values were generated under.
+- **Dark mode, step 12: the doc over-promises.** Nineteen of 31 scales measure under Lc 90 on their step 2 — tomato worst at 84.2. Either the sentence rounds, or the dark pass was solved against a different target than today's meter reports. Six Lc is not a visible failure; it is a documented number the file doesn't contain, which is exactly the kind of thing this course exists to catch.
+
+And the part chapter 11 predicted: the guarantee names APCA and nothing else. Read the WCAG column nobody promised: in light mode, six scales' step-11-on-2 sits under 4.5:1 — teal 4.34, jade 4.43, green 4.49, yellow 4.42, amber 4.43, orange 4.25. If your compliance floor is WCAG 2 — and chapter 8 was blunt that the normative floor is — Radix's low-contrast text step is not automatically your body-text token. The guarantee didn't break; it just answered a question you might not have been asking.
+
+Walk it yourself. Four scales embedded from the source, every contract measured live:
+
+<RadixScaleExplorer />
+
+Worth doing, in order: step 11 on blue, then flip to dark — the Lc badge holds at 60.1, the solved bar. Step 12 on red, dark — the honest under-90. Step 9 on amber — the label flips to black, Radix's own documented list ("Sky, Mint, Lime, Yellow, and Amber are designed for dark foreground text"). Step 10 in both modes — the hover's ΔL changes sign, chapter 16's designed direction. And any step's alpha twin against the page versus black.
+
+## Alpha twins as first-class citizens
+
+Chapter 18 introduced the construction; here's its scale. Every one of the 31 scales ships a translucent twin, built to the rule the Themes docs state: each alpha color is "designed to appear visually the same when placed over the page background."
+
+Measured, that sentence is not approximately true — it's exact. All 372 light-mode alpha values composite over white to their solid's hex, digit for digit. The dark twins target the dark page — gray dark 1, `#111111` — and land within ΔEok 0.015 at worst (most exactly); composite them over pure black instead and they miss by up to 0.18. The target is the page, never black — the distinction chapter 18 flagged, now verified across the entire palette. One construction limit worth smiling at: `blueA9` is `#0090ff` with no alpha byte at all. Step 9 is the purest step, so there's no more-saturated color to dilute down to it — the twin of a solid at full chroma is the solid.
+
+<SolidVsAlphaTwin />
+
+That's the whole pitch for first-class alpha: the solid is correct on one background, the twin is _plausible_ on all of them. Radix spends 1,488 of its 2,976 values on this — half the palette is insurance against surfaces the designer never saw.
+
+## Hand-tuned, and proud of it
+
+Where's the skeleton? There isn't one. Line up all 31 step 9s:
+
+<StepNineLineup />
+
+Step 9's lightness runs from 0.540 (iris) to 0.918 (yellow) — each solid parked where its hue's chroma peak lives, chapter 12's cusp made into a placement policy. Compare the lightness-anchored world: Tailwind holds blue-500 and red-500 within about three L points of one skeleton and pays for it at yellow. Radix pays the opposite price — no two scales are interchangeable by step arithmetic, because no formula was ever in charge. The same signature is in the hue columns (chapter 13 measured yellow bending −24° through its text steps, then snapping back to pure yellow at 9 and 10 — jobs overriding any curve) and in the mode split: all 25 color scales keep their step-9 hex identical in light and dark — chapter 16's surviving solid, palette-wide — while all six grays re-pick (gray 9 drops from `#8d8d8d` to `#6e6e6e`).
+
+The P3 layer shows the same hand. It would have been easy to convert 2,976 sRGB values to display-p3 and call it wide gamut — and for most of the palette that's honestly what shipped: the grays' P3 files sit within rounding error of straight conversion. The remaster is surgical. Only 27 of 372 light values actually leave sRGB — counting a value as out only when it clears the boundary by more than conversion rounding, ~0.005 per channel — and the real edits land precisely where chapter 12 found the ramp pressing the tent: yellow 9 gains chroma 0.184 → 0.209, amber 9 0.157 → 0.178, and the step-11 text colors of the blue-green family — blue 0.162 → 0.189, teal 0.101 → 0.124 — where sRGB is stingiest at text lightness.
+
+<P3RemasterReceipts />
+
+## The paired grays, as a product decision
+
+Chapter 15 measured the whisper; Radix ships it as a menu. Six grays, five tinted, each documented with the accents it's "based on" a hue near — and the docs make it an instruction: "Choose the gray scale which is saturated with the hue closest to your accent hue." Watch the instruction matter:
+
+<GrayPairingSwap />
+
+Sage sits at h 171.6°, within a degree of jade's 170.7° — the gray literally carries the accent's hue at a hundredth of the chroma. Slate leans 107° away, toward blue. Swatch against swatch the two grays are ΔEok 0.023 apart — at the edge of a just-noticeable difference — and as a page they read as two different products. That's chapter 1's area lesson institutionalized: the pairing table is a design decision made purchasable.
+
+## The one generator, at the door
+
+Radix does ship a way in for brand colors — the custom-palette web tool — and its docs promise carefully: "As long as you use a reasonable background color, the contrast ratios will be similar to what Radix Colors provide." Similar, not guaranteed — the honesty chapter 11 respected.
+
+Chapter 14 read the tool's source, and the findings bear repeating as a system review. Your seed ships verbatim as step 9 (unless it's nearly indistinguishable from the background, ΔEok < 0.25, in which case it snaps). The other eleven steps are interpolated from the two nearest hand-tuned master scales — the generation story is literally "borrow the neighbors' hand-tuning." And the re-aim is blunter than the masters it borrows from: custom scales take the seed's hue on _all_ steps — constant hue, no yellow rescue, none of chapter 13's per-family bends that the shipped scales carry. The door exists, but what walks through it gets a simpler palette than the one in the box.
+
+## What twelve steps don't cover
+
+Honest ledger, because a case study that only admires is a testimonial:
+
+- **The job list is opinionated, and you inherit it.** Twelve slots, exactly. One text pair — no "placeholder" or "disabled" step (chapter 18 built those from other machinery). Two background steps — chapter 16 needed an elevation ladder dark mode alone can motivate, and Radix's answer is "use steps 1 and 2," full stop. Need a 13th job or an 8-step system? There is no knob; there are only the 12.
+- **No curves are exposed.** The L skeleton, the chroma arcs, the hue bends — all of Part 2's machinery is _in_ the values and absent from the API. You cannot ask Radix for a denser ramp, a gentler light end, or its own yellow policy applied to your orange. The masters are the interface.
+- **No seed-to-scale pipeline.** The npm package is constants; the tool is a web page. There's no build-time generation, no CI check, no programmatic intake for the brand token your design system actually starts from. For a product whose input is "any user's color," that's not a gap — it's the whole difference in problem statement.
+- **The semantic layer is someone else's product.** Steps are numbered primitives. The token grammar of chapter 17 — `bg`, `fg-muted`, pairing enforcement — exists only in Radix Themes, a separate system with its own opinions. Colors alone hands you excellent paint and no names.
+- **And the measured wrinkle:** the dark-mode Lc 90 sentence over-promises against today's meter. Small, but a system that leads with a written guarantee gets held to the writing.
+
+## The steal list
+
+What dotUI's rewrite takes, judged against Part 2's spec:
+
+1. **Steal the job contracts — and name two meters.** The output contract of chapter 10 stays: slots, responsibilities, a written guarantee against named backgrounds. But Radix's APCA-only warranty leaves six light scales under WCAG's body-text floor; dotUI's guarantee states the WCAG floor _and_ the APCA target (chapter 17's pairing rule), because its users' compliance questions come in both dialects.
+2. **Steal the alpha twins, exactly as constructed.** One twin per scale per mode, solved against that mode's page background — verified here to be exact over the page and wrong over black. This is chapter 18's commitment with a reference implementation to test against.
+3. **Steal the gray pairing as the default tint policy.** Chapter 15 already specced it: neutral tinted toward the accent's hue by default, pure gray reachable. Radix's table is the shipped consensus that policy encodes.
+4. **Steal the masters as a test suite, not a pipeline.** The hand-tuned scales are the best public answer key for "what does good look like at this hue." The rewrite's generator, fed Radix's seeds, should land within a JND of Radix's hand where the philosophies agree — regression targets, chapter 11's philosophy 3 demoted from author to examiner.
+5. **Skip hand-tuning as the primary pipeline.** 2,976 values per palette is the cost of the quality above, and it's payable exactly once, for one fixed set of hues. dotUI's input is an arbitrary seed from `/create`; there is no hand available at generation time. Generation with contracts — chapter 14's intake, chapter 11's curves, this chapter's warranty checked in CI — is the only version of Radix's promise that survives arbitrary input.
+
+Next: the opposite philosophy. Tailwind ships eleven steps, no contracts, one shared skeleton — and more installed base than everyone else in Part 3 combined.
+
+## Check yourself
+
+1. Radix guarantees its text steps at "Lc 60 and Lc 90 … on top of a step 2 background." What did measurement find for dark-mode steps 11 and 12 against that promise, and which meter does the sentence never name?
+2. What exactly does an alpha twin promise, over which background does the dark twin composite correctly, and why does `blueA9` have no alpha channel at all?
+3. Your team proposes adopting Radix Colors wholesale as dotUI's engine output. Name two things from the steal list you'd keep, and the one property of dotUI's product that makes hand-tuning unusable as the pipeline.
+
+## Further reading
+
+- [Radix Colors — Understanding the scale](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale) — the 12-job table, the step-9 chroma claim, the dark-text list, and the Lc 60/90 guarantee this chapter re-measured.
+- [Radix Colors — Composing a palette](https://www.radix-ui.com/colors/docs/palette-composition/composing-a-palette) — the six grays and the pairing instruction, plus the accent-choice guidance.
+- [Radix Colors — Custom palettes](https://www.radix-ui.com/colors/docs/overview/custom-palettes) — the tool, the "contrast ratios will be similar" promise, and the wide-gamut input note.
+- [`radix-ui/colors` — source](https://github.com/radix-ui/colors/tree/main/src) — `light.ts`, `dark.ts`, `blackA.ts`, `whiteA.ts`: every number in this chapter recomputes from these four files.
+- [Radix Themes — Color](https://www.radix-ui.com/themes/docs/theme/color) — the alpha-twin construction sentence, and the separate product where Radix's semantic layer actually lives.

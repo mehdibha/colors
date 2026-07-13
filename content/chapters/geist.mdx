@@ -1,0 +1,121 @@
+---
+title: 'Vercel Geist'
+description: "Case study #5 and the course closer: restraint as a design position. Ten scales, ten steps whose numbers are job titles, status folded into four ordinary hues, dark mode on pure black — and everything Geist deliberately didn't build. Then the synthesis: all five systems, eleven decisions, one matrix, and the rewrite spec this site exists to produce."
+part: 3
+question: 'Ten steps whose numbers are jobs — what did Geist hand-pick, and how does the same card read under all five greats?'
+---
+
+import { GeistLadderWobble } from '@/components/playgrounds/geist-ladder-wobble'
+import { GeistStatusFold } from '@/components/playgrounds/geist-status-fold'
+import { GeistAlphaComposite } from '@/components/playgrounds/geist-alpha-composite'
+import { GeistExplorer } from '@/components/playgrounds/geist-explorer'
+import { DecisionMatrix } from '@/components/playgrounds/decision-matrix'
+
+Radix shipped a hand, Tailwind a convention, Material a space, Adobe a solver. Vercel's Geist ships less than any of them — and that's the position, not the gap. Geist is a color system built for exactly one product family: developer tools, dense dashboards, a dark-mode-first audience, one company's taste. This chapter reads it as the fifth pole — scope as a feature — and then does what the course has been building toward: pulls all five case studies into one decision matrix and points it at the dotUI rewrite.
+
+A dating note up front, because Geist is young and moves: every value here was fetched on **2026-07-12**, from two Vercel sources — the [documentation page](https://vercel.com/geist/colors) and the published machine-readable token export at [vercel.com/design.md](https://vercel.com/design.md) (light) and `/design.dark.md` (dark). Where the two disagree, the chapter says so.
+
+## The artifact
+
+Ten scales: `backgrounds`, `gray`, `gray-alpha`, `blue`, `red`, `amber`, `green`, `teal`, `purple`, `pink`. Every non-background scale is 10 steps, `100` through `1000`, in a light and a dark version — explicit pairs, no generation. The `backgrounds` scale is just two values per mode. Each accent scale also ships a `-p3` twin in `oklch()` — the docs' one sentence on gamut: "P3 colors are used on supported browsers and displays."
+
+Count it: 9 scales × 10 steps × 2 modes = 180 values, plus four backgrounds and 140 P3 variants — about 320 numbers. Radix ships 3,024. Geist is a tenth the size, with a quarter as many hues as Radix and a third as many families as Tailwind. And like Radix, **there is no generator** — but where Radix at least offers a custom-palette tool at the door, Geist has no door. There is no seed intake, no API, no theming story beyond the two modes. The palette is the brand.
+
+## Steps are jobs — in the name
+
+The docs assign every step a written role, and it's the entire documentation: `100` default background, `200` hover background, `300` active background, `400` default border, `500` hover border, `600` active border, `700` high contrast background, `800` hover high contrast background, `900` secondary text and icons, `1000` primary text and icons. Chapter 10's job table, with the jobs promoted into the numbering itself — three background steps, three border steps, a solid pair, a text pair. Interaction states aren't separate machinery (chapter 18's walk-the-ramp, institutionalized): hover is always the next number.
+
+Take the numbering seriously and something has to give — and it does. Plot the lightness:
+
+<GeistLadderWobble />
+
+Gray-400, the default border, is _lighter_ than gray-300, the active background it might sit next to. Blue-900, secondary text, is lighter than blue-800, the hover solid. Amber-700, the solid itself, is lighter than amber-600, a border. A ramp generator would never emit this; a job list doesn't care. The numbers sort by _role group_, and within the seams between groups, each color goes where its job needs it — the clearest evidence in Part 3 that these values were placed one at a time, by hand, against real components.
+
+Two more fingerprints of the hand. The hover solid moves the same direction in both modes — blue 700→800 is ΔL −0.051 in light and −0.056 in dark — where Radix deliberately flips the sign per mode (chapter 16); Geist ships the unsigned hover that chapter 18 warned computation produces, except here somebody chose it. And amber's text step does chapter 13's rescue manually: amber-900 is `#aa4d00`, hue 49° — a 26-degree bend toward orange from the solid's 75°, because really dark yellow isn't a thing and whoever picked this hex knew it.
+
+## Status, folded in
+
+Geist has no status tokens. Errors, warnings, success, focus — all of it resolves to steps of the ordinary scales, and the human-facing docs never even say which hue means what. The machine-facing export does, in one line: accent scales carry meaning — "blue for success, links, and focus; red for errors; amber for warnings." Blue for _success_ is not a typo; it's Vercel's oldest signature, and the focus ring, links, and the affirmative state all share it.
+
+<GeistStatusFold />
+
+The fold has receipts. White on red-700 — red's designated high-contrast background — measures 4.05:1, under the AA body floor. Geist's component spec quietly routes around it: the error button ships on **red-800**, the _hover_ step, where white clears at 4.65:1. And the amber solid takes dark text (white on `#ffae00` is 1.86:1; gray-1000 on it is 9.65:1) — chapter 10's per-hue label flip, handled by hand here because there's no machinery to handle it. The system's entire written contrast doctrine is a single line in the export: "Hold WCAG AA contrast (4.5:1 for body text)." One meter, one number, no per-step guarantee — the contract lives in the culture, not the file.
+
+## Dark mode on pure black
+
+The dark theme redefines every token, and its page is `#000000` — pure black, Apple's OLED choice from chapter 16, not Material's `#121212` or Radix's tinted `#111113`. Both backgrounds, in fact: `background-200` has a value of its own only in light mode; in dark, the pair collapses to black and separation falls entirely to borders — which is why Geist's elevation story is borders and restrained shadows, not a surface ladder.
+
+The dark pass is a second design, with the tells this course knows how to read. Five hexes survive the flip unchanged — gray-700 `#8f8f8f`, gray-800 `#7d7d7d`, amber-700 `#ffae00`, amber-800 `#ff9300`, teal-800 `#00927f` — chapter 16's surviving solids, selectively. Everything else re-picks: dark blue-600 lands on `#0090ff`, the exact hex Radix ships as blue 9, because the space of good vivid blues on dark is small and everyone's hand finds it. And the file has human fingerprints a generator couldn't leave: in dark, amber-800 and amber-900 are the _same hex_ (`#ff9300`), and so are purple-600 and purple-700 (`#9440d5`).
+
+One wrinkle, measured: dark secondary text `#a0a0a0` on black rates 8.03:1 under WCAG — comfortable — but only Lc −50.9 under APCA, below the Lc 60 body-text bar. Chapter 8's flare-term over-credit of dark pairs, shipped in the default reading color of a dark-first product, and invisible to the one meter Geist's sentence names.
+
+The `gray-alpha` scale looks like Radix's alpha twins, so run chapter 21's test on it:
+
+<GeistAlphaComposite />
+
+Light mode half-passes — five steps composite over white to the solid hex exactly, four miss by a hex tick, and gray-alpha-600 misses by ΔEok 0.082, four times a just-noticeable difference. Dark mode never lands at all. This is not the alpha-twin doctrine; it's a translucent gray ramp that was eyeballed near the solids in light and never solved in dark. Geist's own usage rule doesn't need the twin property — alphas for borders and overlays, solids for text — but the comparison marks the difference between a construction and a resemblance.
+
+## Shipping: three generations deep
+
+The export is tidy; the live site is honest about what shipping a young system looks like. Vercel's stylesheets carry **three coexisting generations** of the same token: a legacy set of HSL triplets (`--ds-blue-700-value: 212, 100%, 48%` — within a hex tick of the storied `#0070f3`), a current set of flat hexes (`#0070f7`) upgraded to wide-gamut `lab()` literals behind `@supports (color: lab(0% 0 0))`, and `oklch()` overrides for dark. The published export, same day, says blue-700 is `#006bff` — ΔEok 0.017 from the live hex. None of these are typos; they're strata. The P3 layer is real, not ceremonial — blue-700's P3 variant asks chroma 0.2508 where the sRGB hex delivers 0.2351, genuinely outside sRGB — and it ships gated on _syntax support_, not on display gamut: chapter 20's two-ways-to-ship question, answered the opposite way from the `@media (color-gamut: p3)` pass chapter 20 specced. Every browser that parses `lab()` gets the wide values and clips on sRGB screens — Tailwind's gamble, in different packaging.
+
+## The lab
+
+Walk the whole system, then put it next to the other four:
+
+<GeistExplorer />
+
+Worth doing, in order:
+
+- **Blue, light, step 700.** The solid: white text at 4.62:1. Then switch to red — the same step number fails white text at 4.05:1, and the job table says nothing about it. Step numbers are jobs, but the warranty is per hue, unwritten.
+- **Step 800, both modes.** The ΔL readout keeps its sign — Geist's hover darkens everywhere. Compare chapter 16's Radix receipt where 9→10 flips direction per mode.
+- **Gray, dark, step 900.** The shipped secondary-text pair: 8.03:1 by the named meter, Lc −50.9 by the other one.
+- **Gray, step 400.** The border group, and the wobble — this default border is lighter than the active background one step below it.
+- **The five cards.** Same deployment card, five systems' values — Geist's is the only one whose primary button is _black_. Radix and Tailwind both reach for blue; Material paints it policy-chroma violet; Leonardo's exists only relative to its background. Every fill and label pair is measured live under both meters — notice which systems' body text clears Lc 60 and which merely clear 4.5:1.
+
+## What Geist didn't build
+
+The list is the case study:
+
+- **No generator, no seed intake.** ~320 hand-placed values, no curves, no API. Radix at least exposes a door for brand colors; Geist's brand _is_ the palette. For Vercel this is coherent — nobody themes vercel.com but Vercel.
+- **No breadth.** Eight hues where Tailwind carries 26 families and Radix 31 scales. A dashboard needs one accent, four status hues, and grays; Geist stops there.
+- **No alpha-twin doctrine.** The receipt above — a resemblance, not a construction.
+- **No adaptive engine, no contrast schemes.** Two frozen modes. No Leonardo continuum, no Material contrast levels, no `prefers-contrast` variants — chapter 9's third column has no seat here.
+- **No written warranty.** One WCAG sentence for the whole system; the per-step, per-hue truths (red-700 fails white text; amber flips its label) live in the components that consume the palette, not in the palette's contract.
+
+Every one of those absences is money Vercel didn't spend, and the product is the argument that they didn't need to: one design team, one product family, designers in the loop for every new surface. Geist is what the hand-tuned philosophy looks like when you also hand-tune the _scope_. The reason this course can't just copy it is the same reason it works: dotUI's input is anyone's brand color, and every absence above is exactly the machinery arbitrary input requires.
+
+## The steal list
+
+What dotUI's rewrite takes, judged against Part 2's spec:
+
+1. **Steal jobs-in-the-name as the documentation surface.** Geist's step table is the best-written page in Part 3: number, role, done. The rewrite's primitive docs should read like it — even though the numbers stay ordinal underneath and the contracts stay in chapter 17's semantic tier.
+2. **Steal backgrounds as their own two-token scale.** Separating `background-100/200` from the gray ramp — with a rule against swapping them — is chapter 17's surface/neutral split shipped small, and it's what lets dark mode collapse the pair to black without touching the grays.
+3. **Steal the scope posture for defaults.** The default output of dotUI's engine should look Geist-sized — one accent, grays, four status hues — with breadth available on demand rather than shipped by default. Twenty-six families is a palette's job, not a default theme's.
+4. **Skip contract-by-culture.** The unsigned hover, the unwritten label flips, the single contrast sentence — all fine when the palette's authors review every consuming component, unavailable when the consumer is a stranger with a hex code. The rewrite writes down what Geist keeps in its designers' heads, because dotUI has no designers on the other end.
+
+## The synthesis: eleven decisions, one call each
+
+That's the tour: five systems, five poles. Radix — hand-tuned depth, contracts as warranty. Tailwind — breadth on one skeleton, contracts by convention. Material — contracts as geometry, taste as policy. Spectrum/Leonardo — contracts as input, taste in the keys. Geist — everything by hand, including the decision not to generalize. None of them is the rewrite spec, and all of them priced some part of it.
+
+Here is the whole course as a table — every decision the dotUI engine has to make, the chapters that argued it, and the leading option:
+
+<DecisionMatrix />
+
+## Write the spec
+
+This site had a stated purpose: learn color deeply enough to rewrite dotUI's color engine, and be done when the rewrite spec can be written. That's now. The checklist above is the spec's table of contents; Part 2 argued each row's option and Part 3 stress-tested every one of them against a shipped system. The chapters along the way already convicted the current engine's specific bugs — the mode-agnostic ramps, the autocontrast pick, the silent chroma floor, the unbanded hue torsion, the ungated status seeds — and named their replacements.
+
+So the last exercise isn't a playground. Open a blank document, write eleven headings from the matrix, and under each one state the decision, the parameters it exposes, and the check that enforces it in CI. Where a row won't write, that chapter's question is the one to go back and answer. When it writes end to end — that's the spec, and the course did what it was for.
+
+## Check yourself
+
+1. Geist's gray ladder isn't monotonic — name one wobble and explain why it's evidence of health rather than a bug. What are the step numbers actually encoding?
+2. The error button ships on red-800 instead of red's designated high-contrast step. What measurement forces the detour, and what is the only contrast promise Geist puts in writing for the whole system?
+3. Geist and Radix both hand-tune every value. Name the scope decision that makes this survivable for Vercel, the three Geist moves worth stealing anyway, and the property of dotUI's product that rules out the strategy wholesale.
+
+## Further reading
+
+- [Geist — Colors](https://vercel.com/geist/colors) — the documentation page: ten scales, the step-to-usage table, the background rules, and the P3 sentence. Fetched 2026-07-12.
+- [vercel.com/design.md](https://vercel.com/design.md) — Vercel's published machine-readable token export (light theme): every hex and `-p3` value in this chapter recomputes from it and its dark twin at [/design.dark.md](https://vercel.com/design.dark.md), including the status-semantics line and the "Hold WCAG AA" sentence.
+- [Radix Colors source](https://github.com/radix-ui/colors/tree/main/src), [Tailwind `theme.css`](https://github.com/tailwindlabs/tailwindcss/blob/v4.3.2/packages/tailwindcss/theme.css), [material-color-utilities](https://github.com/material-foundation/material-color-utilities), [adobe/leonardo](https://github.com/adobe/leonardo) — the four comparison systems in the flagship's card, each read at length in chapters 21–24.

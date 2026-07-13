@@ -1,0 +1,102 @@
+---
+title: 'Color for data visualization'
+description: "Categorical, sequential, diverging — three palette types keeping three different contracts, and a UI ramp keeps none of them. Why chart lightness must climb in one direction, what jet gets wrong and viridis gets exactly right, and why dotUI's five chart tokens are the engine's most exposed unfinished business."
+part: 2
+question: 'Which of the three palette contracts does your chart need — and does your palette keep it under other eyes?'
+---
+
+import { ChartTokensToday } from '@/components/playgrounds/chart-tokens-today'
+import { UiRampAsCategorical } from '@/components/playgrounds/ui-ramp-as-categorical'
+import { CategoricalCeiling } from '@/components/playgrounds/categorical-ceiling'
+import { JetVsViridis } from '@/components/playgrounds/jet-vs-viridis'
+import { DivergingMidpoint } from '@/components/playgrounds/diverging-midpoint'
+import { PaletteTypeLab } from '@/components/playgrounds/palette-type-lab'
+
+dotUI ships chart components today, so this chapter has a paying customer before it starts. The chart colors, read straight from the theme: `--chart-1` through `--chart-5` alias `accent-500`, `success-500`, `warning-500`, `danger-500`, `info-500` — five UI solids drafted into chart duty. Measure them. All five sit at L 0.648–0.651 (chapter 11's lightness-anchored skeleton, doing equal visual weight by accident), but the hues land at 25°, 82°, 148°, 251°, and 260° — accent and info are 8.75° apart, ΔEok 0.059. That's below chapter 9's own "merged" bar _for normal vision_: two of the five series colors are one color. Under deuteranopia the worst pair is success versus danger at ΔEok 0.009. The engine's most public consumer of color never got a palette design — it got aliases. Here they are:
+
+<ChartTokensToday />
+
+The fix is not "pick nicer hexes." Charts ask color to do three different jobs, and each job is a different contract: **categorical** (these things are different), **sequential** (this thing has more of it), **diverging** (this thing is above or below a reference). Everything the engine generates for charts is one of the three, and everything this chapter measures is one contract or another being kept or broken.
+
+## A UI ramp is the wrong shape for a chart
+
+The instinct every design system indulges first: the accent ramp exists, it's beautiful, use its steps as series colors. But a UI ramp is one hue stepped in lightness — that's precisely why chapter 9's brand ramp sailed through every CVD filter, and precisely why it fails here. Order carried by lightness is the ramp's whole content, and a categorical chart has no order to carry.
+
+<UiRampAsCategorical />
+
+Two failures at once. Adjacent steps are near-neighbors by design — blue 5 to blue 6 is ΔEok 0.045, about two just-noticeable differences, hopeless as a line crosses another line. And the shared hue smuggles in a ranking: Datawrapper's guidance names the mechanism — "Since many readers will associate dark colors with 'more/high' and bright colors with 'less/low', such a color palette will imply a ranking of your categories." A ramp used as a categorical palette isn't just hard to read; it says something false.
+
+## Categorical: different at a glance, equal in weight
+
+The categorical contract has two clauses. Every pair of colors must be distinguishable at a glance — and no color may be louder than the others, because a series that pops reads as a series that matters. The recipe falls out of the OKLCH axes: similar L and similar C (equal weight), hue doing the separating. dotUI's five tokens got the first clause's shape right by inheritance and never checked the second half of anything: the hue spacing was never designed, so two blues shipped.
+
+Distinguishable _to whom_ is chapter 9's question, and this is the chapter that promised to answer it with a gate: run the palette through all three culori filters at severity 1, take the minimum pairwise ΔEok, fail the build if it drops below the merged bar. Watch what that gate does to the naive generator — even hue spacing, one L, one C:
+
+<CategoricalCeiling />
+
+Normal vision is not the constraint; the filters are. At five categories the worst simulated pair is already ΔEok 0.041, at six it's 0.028, at eight 0.007 — the hue wheel folds along chapter 9's confusion lines and even spacing just redistributes the wreckage. The rescue is the one Datawrapper keeps in its section heading — "Combine colors with different lightness" — spend a little of the L axis too, staggered so hue-neighbors differ in lightness. The lab below ships that generator, and it buys real room: its six-color palette holds ΔEok 0.061 at the worst filter, just over the bar. At eight it fails again.
+
+That's the honest ceiling, and the field agrees on where it sits. ColorBrewer — Cynthia Brewer's palette tool, the ancestor of every "palette type" dropdown — rates its own qualitative schemes for colorblind safety: three schemes earn the safe mark at three classes, one at four, none past four. Datawrapper, from the practitioner side: "Colors make it easy to let readers distinguish between categories in your data, but try to avoid using more than seven of them." Six to eight categories is where color stops being the carrier — past it, the answer is direct labels, shapes, small multiples, or fewer series, not a ninth color.
+
+## Sequential: lightness climbs, or the map lies
+
+A sequential palette encodes magnitude, and one channel has to carry the "more" — the same channel that survives grayscale printing, dying projectors, and (mostly — chapter 9's protan asterisk) every CVD filter: lightness. The contract is one sentence: **L must be monotonic across the range.** Everything else about a sequential ramp is taste; this is the load-bearing wall.
+
+The famous failure is jet, the rainbow that was MATLAB's and matplotlib's default for years, and it fails exactly here:
+
+<JetVsViridis />
+
+Jet's OKLab lightness starts at 0.27, climbs to a plateau around 0.90 across cyan and green, crests at 0.97 on yellow, then falls off a cliff to 0.38 — three direction changes, so the top third of the data range runs _downhill_ in lightness and two different data values print the same gray. The perceptual crests at cyan and yellow paint bands into smooth data. Crameri, Shephard & Heron measured the damage: an unscientific colour map "adds artificial boundaries to some parts of the data range, hiding small-scale variations elsewhere," it "renders the data unreadable for readers with common colour-vision deficiencies," and blind interpretation "can diverge from an objective representation by more than seven percent of the displayed data variation."
+
+Viridis — designed by Stéfan van der Walt and Nathaniel Smith in CAM02-UCS, matplotlib's default since 2.0 — is the same idea this course has been building all along, arrived at independently: put the promise on the lightness axis. Across its shipped 256 entries, OKLab L rises from 0.285 to 0.918 and every single step lands between 0.00228 and 0.00295 — a straight line, to the third decimal, in a space it wasn't even designed in. Meanwhile the hue travels 216° (violet through teal to yellow) and chroma wanders between 0.08 and 0.19. That's the whole trick: **all the personality lives in H and C; none of it touches L's pacing.** Crameri's scientific colour maps (batlow and family) are the same construction stated as a rule — "an even, monotonic lightness gradient."
+
+In OKLCH the trick stops being a research project and becomes three lines: L linear from end to end, H drifting as far as taste allows, C arced under chapter 12's tent. The one design decision left is anchoring: which end sits near the surface. On a light dashboard, low values start near-white and climb dark; on a dark dashboard the same data starts near-black and climbs light — chapter 16's room change, applied to a ramp. The quiet end belongs to the background, whichever background that is — the lab below shows it live: put the sequential heatmap up and flip the surface.
+
+## Diverging: two ramps and a quiet zero
+
+A diverging palette is not a fourth idea — it's two sequential arms bolted back to back, meeting at a midpoint that means "nothing to report": at the mean, at zero change, at the reference. Which is why the midpoint can't be an arbitrary white. It must be _quiet_, and quiet is relative to the surface (chapter 1 has been saying this since the first demo).
+
+<DivergingMidpoint />
+
+ColorBrewer's diverging midpoints are near-white — RdBu's is `#f7f7f7`, OKLab L 0.976, chroma zero — because Brewer designed for choropleth maps on white paper, where that midpoint sits ΔEok 0.024 off the surface. Carry the same palette onto a dark dashboard and the midpoint measures 17.6:1 against the background: the cells that mean _nothing happened_ are the brightest objects on screen, and the extremes — RdBu's deep red and deep blue land around 1.4:1 against dark surfaces — nearly vanish. The palette isn't wrong; it's on the wrong surface. The surface-matched version rebuilds both arms around the dark theme's own neutral (chapter 15's tinted near-black, doing one more job), and the loudness returns to the extremes where the data is.
+
+## The lab
+
+One dataset — six series, twelve months — rendered as bars, lines, and a heatmap, colored by all four palettes (the three contracts plus rainbow, the cautionary tale), generated live from a seed hue, on either surface, under any eye. The right panel is the three contracts as three meters.
+
+<PaletteTypeLab />
+
+Worth doing, in order:
+
+- **Categorical, line view, then walk the filters.** The separation meter holds "distinct" for normal vision, drops into risky under deutan and protan — 0.06-something, above merged, the staggered-L rescue earning its keep. Note the lightness sparkline: a zigzag, and its meter is green anyway. No order encoded means no order to break.
+- **Sequential, heatmap.** The fit: values paint as lightness, the sparkline is a straight climb, the low end hugs the surface. Now switch to the line view without changing anything: the separation meter collapses — adjacent series get near-identical ramp samples. Same palette, wrong contract.
+- **Rainbow, heatmap.** Two meters go red at once: the lightness path reverses twice on the way up and once hard on the way down, and the low end (jet's dark blue) shouts against a light surface. Simulate deutan for the full Crameri indictment.
+- **Diverging, heatmap, then flip the surface.** Watch the palette regenerate: the midpoint chases the background, the arms swap their lightness direction, and the anchor meter stays green on both surfaces. That's chapter 16 as a generator feature instead of a redesign.
+- **Drag the seed hue.** Every palette follows — same engine, same seed, three contracts. This is the API the rewrite owes.
+
+## The decision this unlocks
+
+What dotUI does today, read from the source: `--chart-1` through `--chart-5` alias the five status/accent solids — equal L by the skeleton's accident, hue spacing unexamined (two blues 8.75° apart), no CVD gate (the deutan worst pair sits at 0.009, six times under the merged bar), and nothing at all to hand a heatmap or a diverging scale — no sequential ramp exists in the theme. The chart kit's accessibility layer ships a screen-reader table because "charts encode data with color alone" — the right instinct, aimed at assistive tech, while the sighted-CVD half of the same problem shipped unchecked. And borrowing status solids has a semantic cost besides: series four of every dotUI chart is _danger red_, whether or not anything is wrong.
+
+The rewrite decision: **the engine generates visualization palettes as first-class outputs, from the same seeds as everything else.**
+
+1. **Categorical is generated, not aliased.** N series colors from the accent seed: even hue spread as the starting point, similar C, an L stagger designed in (the rescue this chapter measured), and chapter 9's gate as a hard CI check — minimum pairwise ΔEok across all three filters at severity 1, per mode. Documented ceiling: past six to eight, the docs say "use labels," not "here's color nine." Status hues stay reserved for status meaning.
+2. **Sequential is three curves with one non-negotiable.** Seed hue in, L strictly monotonic and anchored to each mode's surface at the quiet end, C arced under the gamut tent, hue drift as a free axis (the viridis trick, priced by chapter 13). The monotonicity check is a build failure, not a review comment.
+3. **Diverging is two sequentials and a surface fact.** Two arms (second seed or complement), midpoint pinned to the mode's surface neutral from chapter 15 — regenerated per mode like everything else in chapter 16.
+4. **The gates are the product.** Distinguishability, monotonicity, anchor — the three meters in the lab above are the spec: every generated palette ships with its three numbers, and two of them are pass/fail.
+
+Left open, on purpose: shipping these palettes as CSS custom properties next to the rest of the theme — and what P3 buys a chart — is chapter 20.
+
+## Check yourself
+
+1. A teammate colors a six-series line chart with steps 4–9 of the accent ramp. Name both clauses of the categorical contract it breaks, and what the false message of the shared hue is.
+2. What is the one non-negotiable property of a sequential palette, how exactly does jet violate it (shape of the curve, not just "it's rainbow"), and what does viridis do with hue and chroma while keeping it?
+3. Your diverging heatmap ships with a `#f7f7f7` midpoint on a dark dashboard. What does the zero region do visually, what happens to the extremes, and which value from the dark theme should the midpoint be pinned to instead?
+
+## Further reading
+
+- [ColorBrewer 2.0](https://colorbrewer2.org/) — Cynthia Brewer's palette tool: the sequential/diverging/qualitative taxonomy this chapter is built on, with per-scheme colorblind ratings.
+- [Lisa Charlotte Muth — What to consider when choosing colors for data visualization](https://www.datawrapper.de/blog/colors/) — the practitioner rules quoted here, including the seven-color ceiling and the gradient-implies-ranking warning.
+- [A Better Default Colormap for Matplotlib](https://bids.github.io/colormap/) — van der Walt & Smith's viridis design page: perceptual uniformity in CAM02-UCS, the grayscale test, and jet's failures, from the authors.
+- [Crameri, Shephard & Heron — The misuse of colour in science communication](https://www.nature.com/articles/s41467-020-19160-7) (Nature Communications, 2020) — the scientific case for perceptually uniform, ordered colour maps, and the batlow family.
+- [matplotlib — Choosing Colormaps](https://matplotlib.org/stable/users/explain/colors/colormaps.html) — the lightness plots for every shipped colormap; the fastest way to see this chapter's argument across a hundred palettes.

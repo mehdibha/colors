@@ -1,0 +1,125 @@
+---
+title: 'States, alpha, and status colors'
+description: 'Hover, pressed, focused, disabled — the colors nobody designs and everybody touches. Three ways to derive interactive states, the two frontiers a focus ring must win, what alpha buys and what it costs, and why a status color is a mini-ramp, not one hex.'
+part: 2
+question: 'Walk the ramp, compute a shift, or overlay a layer — which state strategy keeps its promises in both modes?'
+---
+
+import { HoverThreeWays } from '@/components/playgrounds/hover-three-ways'
+import { FocusRingTwoFrontiers } from '@/components/playgrounds/focus-ring-two-frontiers'
+import { DisabledThreeRecipes } from '@/components/playgrounds/disabled-three-recipes'
+import { AlphaVsSolidChip } from '@/components/playgrounds/alpha-vs-solid-chip'
+import { AlphaStacks } from '@/components/playgrounds/alpha-stacks'
+import { StatusFourPack } from '@/components/playgrounds/status-four-pack'
+import { StateDerivationLab } from '@/components/playgrounds/state-derivation-lab'
+
+Chapter 17 counted dotUI's vocabulary: 83 tokens, of which 27 are state variants — `-hover`, `-active` — and every status role besides. A third of the API is colors nobody sat down to design. The rest color got chapters 10 through 16: a job, a skeleton, a chroma budget, a dark twin. Its hover got an arithmetic afterthought. This chapter is about that afterthought — where derived colors come from, and which derivations survive contact with both modes, every surface, and eyes that aren't yours.
+
+## Three ways to make a hover
+
+Every system answers the same question: the user's pointer is on the button — what color is it now? There are three living answers.
+
+**Walk the ramp.** The scale already contains the state, because the states were hired as jobs (chapter 10). Radix designed this in: step 3 "is for normal states," step 4 "is for hover states," step 5 "is for pressed or selected states" — and for solids, step 10 "is designed for component hover states, where step 9 is the component's normal state background." dotUI does the same thing on numeric steps: `theme.css` maps `--color-accent` to `accent-500`, `-hover` to `600`, `-active` to `700`, straight down the ramp. Nothing is computed at use time; the derivation happened when the ramp was generated.
+
+**Compute a shift.** `color-mix(in oklab, var(--accent), black 8%)`, or L − 0.04 in OKLCH. No extra tokens, works on any color including ones the ramp never met. Chapter 7 owns the fine print: the mixing space decides the route, so 8% black in gamma sRGB (`#0084eb` from blue 9) and in Oklab (`#0080e4`) are different hovers — close at 8%, diverging as the shift grows.
+
+**Overlay a state layer.** Material's answer: don't change the color, composite a translucent layer of the _content_ color over it — `on-primary` over a filled button — at fixed opacities. The shipped tokens are exact: hover 8%, focus 12%, pressed 12%, dragged 16%. It's a computed shift wearing alpha, with one deep consequence: the direction of the change comes from the content color, not from a sign you hardcoded.
+
+Why that matters is a mode story, and it's the chapter's first trap:
+
+<HoverThreeWays />
+
+Radix ships the _same_ step-9 hex in both modes (chapter 16), but its designed hover flips direction: light blue 10 is darker than 9 (L 0.649 → 0.622), dark blue 10 is _lighter_ (0.649 → 0.688). Walking the ramp inherits the flip for free — the dark ramp was designed with its own hover step. The state layer's direction comes from its content color, and Material re-picks that per mode — a real dark-mode filled button has a light fill and a dark label, so its layer darkens; with this demo's fixed white label it just lightens everywhere, the dark room's answer applied to both. And the computed shift with a fixed sign marches the wrong way in the dark; "hover = darken 8%" is a light-mode fact mistaken for a law. And the honest other half: with the sign flipped per mode, the computed shift all but reproduces the designed step — L + 0.04 from dark blue 9 lands at `#3e9eff`, ΔEok 0.002 from Radix's hand-designed `#3b9eff` (in light mode the gap is 0.013, under one just-noticeable difference). Computation isn't the weakness; unsigned computation is.
+
+There's a second trap at the edges: a computed shift needs headroom. Darken a near-black primary button by ΔL 0.04 and nothing visible happens — chapter 16's quiet-end lesson, recurring as a state bug. A ramp walk can't run out of contrast the same way, but it can run out of _steps_: Radix designed no pressed state for solids, so a system that walks 9 → 10 borrows a computed shift for `active` anyway. Real systems mix strategies; the decision is which one is the default and which the fallback.
+
+## Focus has two frontiers
+
+Hover recolors the control. Focus _adds_ paint — a ring — and the ring has a legal obligation the other states don't. WCAG 1.4.11 Non-text Contrast (Level AA) requires that "visual information required to identify user interface components and states" have "a contrast ratio of at least 3:1 against adjacent color(s)." For a focus ring, the adjacent colors are plural in the worst way: the control it wraps on one side, the page behind it on the other. Two frontiers, one ring.
+
+<FocusRingTwoFrontiers />
+
+The solid blue-9 ring clears the page frontier on white (3.26:1) and on the dark section (5.78:1), fails it on the brand-tinted panel (2.91:1) — and never had the control frontier at all: around a blue-9 button it measures 1.00:1, a ring painted in its own invisibility. No single solid reliably wins both frontiers on every surface a real app ships, which is why the shipped fixes are constructions, not colors. The offset ring — dotUI's `focus-ring` utility is literally `ring-2 ring-border-focus ring-offset-2 ring-offset-bg` — repaints the control frontier with a 2px gap of page color. The two-tone ring carries both frontiers with it: a light inner line against dark controls, a dark outer line against light pages, so one of the two clears 3:1 against anything.
+
+Two more standards facts, stated plainly because the numbering invites mistakes. WCAG 2.2 added 2.4.13 Focus Appearance at Level AAA — the indicator must be "at least as large as the area of a 2 CSS pixel thick perimeter of the unfocused component" and have "a contrast ratio of at least 3:1 between the same pixels in the focused and unfocused states" — a change-based test that an offset or two-tone construction passes naturally. And 2.4.11 Focus Not Obscured (Minimum), Level AA, is not about color at all: the focused control must not be "entirely hidden due to author-created content" — your sticky header can erase a perfect ring.
+
+One honest wrinkle from the lab below: subtle _rest_ borders fail the same 3:1 test — Radix slate 7 on its page background is 1.53:1, and nearly every shipped field border is in that range. 1.4.11 tolerates this when the control is identifiable without the boundary (a label, a placeholder, surrounding layout); it stops tolerating it the moment the border is the only thing marking the field — and the focus indicator never gets the exemption.
+
+## Disabled: reduced contrast on purpose
+
+Disabled is the one state designed to lose attention, and the standard says so: WCAG 1.4.3 exempts "text or images of text that are part of an inactive user interface component" — no contrast requirement. That's an exemption, not a goal; a disabled button still has to be findable, just legibly _off_. Three shipped recipes:
+
+<DisabledThreeRecipes />
+
+**Alpha** — Material's: the container is `on-surface` at 12%, the label `on-surface` at 38%, both straight from the shipped tokens. Because it's alpha, it re-composites against whatever it sits on — the disabled button on a warm card comes out warm, and the same two tokens serve both modes. **Desaturate and lift** keeps a ghost of the control's identity — the disabled primary still reads faintly blue, a disabled danger faintly red. **Fixed grays** — dotUI's: `--color-disabled` is `neutral-200`, `--color-fg-disabled` is `neutral-500`, 3.03:1 — are the simplest to reason about and the least adaptive: one flat value that sits cold on tinted surfaces and needs its own dark-mode assignments.
+
+## Alpha: one color for every surface
+
+The disabled recipe smuggled in this chapter's second subject. An alpha color is a color that finishes rendering only on arrival — and that's a superpower exactly where surfaces vary.
+
+Radix ships an alpha twin for every scale, and the construction is precise. In the Themes docs' words: "Every color has an alpha variant which is designed to appear visually the same when placed over the page background." Verified: `slateA3` is `#0000330f` — near-black at 6% — and composited over white it produces `#f0f0f3`, which is slate 3 _exactly_, to the hex. The dark scales target their own page background: `slateDarkA3` over slate dark 1 reproduces slate dark 3 exactly (over pure black it doesn't — the target is the page, not black). And the standalone `blackA`/`whiteA` scales are, per the docs, "designed for overlays and don't change across light and dark theme."
+
+<AlphaVsSolidChip />
+
+That's the case for alpha: a hover wash, a selection tint, a zebra stripe, an elevation shade that works on _any_ surface — one token where a solid system needs one per background, or ships the wrong gray on the warm card. It's also how a state layer works, which is why Material's states adapt for free.
+
+Now the costs, because alpha bills later:
+
+<AlphaStacks />
+
+Stacking compounds. Two 15% layers aren't 30%, they're 27.75% — each layer filters what the last one passed — so a selected row in a hovered group on a raised card is a composite you never chose, chapter 7's gray-nobody-chose as an architecture problem. And text on alpha is a contract with a moving counterparty: slate 11 clears 5.22:1 over `slateA3`-on-white and manages 1.64:1 over the same token on blue 9. Radix's text-grade alphas (`slateA11`, `slateA12`) are safe _because_ the construction pins the background — they're solid-equivalent over the page they were built for, and only there. The rule that falls out: alpha for washes, tints, and overlays where the underside varies; solids wherever a pairing promise from chapter 17 has to be checkable.
+
+## Status colors are four small design systems
+
+Success, warning, danger, info. The hues are convention — green, amber, red, blue — and the convention is learned, not universal: mainland Chinese and Japanese stock tickers color gains red, so a trading UI localizes exactly the association your alert system leans on. Which is one more reason the meaning can never ride on hue alone: chapter 9 measured red 9 against green 9 under deuteranopia at ΔEok 0.053 — below its own simulator's "merged" bar. Every status ships with an icon and a word, and the color is corroboration.
+
+The engineering mistake is more basic, though: shipping a status as one hex. A status color is a _role_, and roles need the same slots every accent needed:
+
+<StatusFourPack />
+
+A real alert wants a subtle background (step 2), a border (7), an icon or solid (9), and text (11) — a twelve-step scale's most common jobs, hired four more times. One hex can't hold any two of those jobs at once: as a background it screams, as text on its own tint it's illegible, and the solid's label side flips per hue — white text clears only the 3:1 large-text bar on red 9 (3.91:1) and dies on amber 9 at 1.58:1, where black clears 13.31:1. Chapter 10's yellow-button lesson, now a production incident in your alert component.
+
+The mini-ramps also expose a meter subtlety worth savoring. Radix's stated guarantee for text steps is APCA-denominated — Lc 60 on a step-2 background — and all four status pairs clear it comfortably (68.8 to 70.5). Run the same pairs through WCAG 2 and red clears 4.5 while green lands at 4.49 and amber at 4.43 — a hair under the nominal AA floor. Neither number is wrong; they're different meters (chapter 8), and the guarantee named its meter (chapter 11). If your compliance target is WCAG-first, your status text steps need to be solved against _that_ meter, not inherited.
+
+Dark mode, briefly, because chapter 16 already did the work: status colors don't desaturate uniformly in the dark — red lifts and sheds chroma while yellow _gains_ it — so status mini-ramps go through the same second generation pass as everything else, not a transform.
+
+## The lab
+
+Three components — a solid button, a list item, an input — times five states, times three derivation strategies, in both modes. The readouts are the contracts: the button's label contrast per state, the list text's ratio, the input border's 3:1 boundary check, and the focus ring's page frontier.
+
+<StateDerivationLab />
+
+Worth doing, in order:
+
+- **Walk, light mode.** Every state is a designed step and every readout holds — then look at the button's pressed cell: an em-dash. The ramp designed hover (9 → 10) and stopped; pure walking runs out of vocabulary and borrows a shift anyway.
+- **Switch to dark, still walking.** Hover and pressed now _lighten_ — the dark ramp was designed with its own directions, and the walk inherits them without a line of logic.
+- **Compute ΔL, dark mode.** The lab flips the sign for you and lands within a JND of the designed steps. Now imagine the sign unflipped — the light-mode rule in the dark room — and check the hover demo above for what that ships.
+- **State layer, both modes.** Watch the button's label readout on hover: the white layer pulls the fill toward the label, and contrast _drops_ — 3.26 to 2.99 in light mode. The strategy that adapts by construction pays a little of the label's budget for every state.
+- **Any strategy, the input's rest border.** 1.53:1 against the field — the readout fails all chapter long. That's most shipped field borders; it's legal only as long as the border isn't the field's sole identity.
+
+## The decision this unlocks
+
+What dotUI does today, read from the source: states are ramp walks wired as aliases (`500 → 600 → 700` for solids, one step down the quiet end for muteds — accent `50 → 100`, statuses `100 → 200` — and `300 → 400 → 500` for borders), which is the right family of answer — and it survives dark mode only because `colors.css` re-points the numeric names at a reversed ramp. Chapter 16 already convicted that ramp: there is no dark design, so every dark state walks steps nobody placed. Disabled is fixed grays. Focus is `--color-border-focus: accent-500` with the offset construction — sound on the control frontier by geometry, unverified on the page frontier anywhere but the default background. There are no alpha scales at all; the only translucency in the theme is two `color-mix` shine overlays. Status roles do get real mini-ramps (muted 100, border 300, solid 500, text 800) — good bones — but the seeds are four hardcoded Tailwind hexes, the label side comes from chapter 17's buggy black-or-white pick, and nothing runs chapter 9's CVD gate — the default red/green pair simulates to deutan ΔEok 0.101, inside chapter 9's risky band, shipped unchecked.
+
+The rewrite decisions, stated as commitments:
+
+1. **States are jobs, walked per mode.** The state steps stay in the ramp contract (chapter 10) and each mode's generation pass designs its own (chapter 16) — the walk inherits direction and spacing from design, never from a mode-blind delta. Computed shifts remain as the _explicit_ fallback for states the ramp didn't design, signed per mode, with the sign in the spec.
+2. **Every scale gets an alpha twin.** Generated against the mode's page background, Radix's construction — solid-equivalent where the page is known, honest alpha everywhere else — plus static black/white overlay scales. Washes, selection tints, and elevation shades stop being ad-hoc solids.
+3. **Focus tokens pass a two-frontier check.** `border-focus` is verified at 3:1 against the page background _and_ against every solid it can wrap, per mode — or the theme ships the offset/two-tone construction that makes the check pass structurally, and says so.
+4. **Status roles are seeds through the full pipeline.** Four user-overridable seeds, full mini-ramps with named slots, the dark second pass, per-solid label side solved like any pairing (chapter 17), and chapter 9's CVD check as a hard gate on the four solids together.
+
+Left open, on purpose: color for data visualization — palettes whose whole job is mutual distinctness — is chapter 19; shipping all of this as CSS (`@theme`, `color-mix()`, P3) is chapter 20.
+
+## Check yourself
+
+1. A teammate implements every hover as `color-mix(in oklch, var(--color), black 8%)`. Name the two situations from this chapter where that rule breaks, and what each of the three strategies would ship instead.
+2. Your focus ring passes 3:1 against the page background. What's the second frontier, which measurement proved a solid ring can't be trusted with it, and which two constructions dodge needing one color to win both?
+3. Why is `--color-danger: #e5484d` not a shippable status system? Name the four slots the mini-ramp needs, the two non-color carriers chapter 9 requires, and the reason the solid's label color can't be "white" across all four statuses.
+
+## Further reading
+
+- [Radix Colors — Understanding the scale](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale) — the twelve jobs, including the state steps (3/4/5, 9/10) this chapter walks.
+- [Radix Themes — Color](https://www.radix-ui.com/themes/docs/theme/color) — the alpha-variant construction: "designed to appear visually the same when placed over the page background."
+- [WCAG 2.2](https://www.w3.org/TR/WCAG22/#non-text-contrast) — 1.4.11 Non-text Contrast (the 3:1 rule and its "adjacent colors"), 2.4.11 Focus Not Obscured, 2.4.13 Focus Appearance, and 1.4.3's inactive-component exemption, from the normative text.
+- [material-web — `md-sys-state` tokens](https://github.com/material-components/material-web/blob/main/tokens/versions/v0_192/_md-sys-state.scss) — the shipped state-layer opacities (hover 8%, focus 12%, pressed 12%, dragged 16%); the per-component files pin the layer color to the content color and disabled to `on-surface` at 12%/38%.
+- [MDN — `color-mix()`](https://developer.mozilla.org/en-US/docs/Web/CSS/color-mix) — the computed-shift primitive, including the interpolation-space argument chapter 7 taught you to never leave implicit.
