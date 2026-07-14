@@ -5,6 +5,7 @@ part: 2
 question: 'Walk the ramp, compute a shift, or overlay a layer — which state strategy keeps its promises in both modes?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { HoverThreeWays } from '@/components/playgrounds/hover-three-ways'
 import { FocusRingTwoFrontiers } from '@/components/playgrounds/focus-ring-two-frontiers'
 import { DisabledThreeRecipes } from '@/components/playgrounds/disabled-three-recipes'
@@ -110,11 +111,48 @@ The rewrite decisions, stated as commitments:
 
 Left open, on purpose: color for data visualization — palettes whose whole job is mutual distinctness — is chapter 19; shipping all of this as CSS (`@theme`, `color-mix()`, P3) is chapter 20.
 
-## Check yourself
+## Before you move on
 
-1. A teammate implements every hover as `color-mix(in oklch, var(--color), black 8%)`. Name the two situations from this chapter where that rule breaks, and what each of the three strategies would ship instead.
-2. Your focus ring passes 3:1 against the page background. What's the second frontier, which measurement proved a solid ring can't be trusted with it, and which two constructions dodge needing one color to win both?
-3. Why is `--color-danger: #e5484d` not a shippable status system? Name the four slots the mini-ramp needs, the two non-color carriers chapter 9 requires, and the reason the solid's label color can't be "white" across all four statuses.
+<Questions>
+  <Question q="A teammate implements every hover as color-mix(in oklch, var(--color), black 8%). Name the two situations from this chapter where that rule breaks, and what each of the three strategies would ship instead.">
+    It breaks in **dark mode** — a fixed "darken" sign marches the wrong way,
+    because "hover = darken 8%" is a light-mode fact mistaken for a law. And it
+    breaks **at the quiet end** — a computed shift needs headroom, so darkening
+    a near-black primary by ΔL 0.04 does nothing visible. The fix isn't to stop
+    computing; it's to stop computing _unsigned_. Walking the ramp inherits the
+    right direction per mode for free, because each mode's ramp was designed
+    with its own hover step (Radix light blue 10 is darker than 9, dark blue 10
+    is lighter). The state layer takes its direction from the _content_ color,
+    which Material re-picks per mode, so it adapts by construction. And a
+    computed shift still works — but signed per mode, with the sign written in
+    the spec; done that way it lands within a JND of the hand-designed step.
+  </Question>
+  <Question q="Your focus ring passes 3:1 against the page background. What's the second frontier, which measurement proved a solid ring can't be trusted with it, and which two constructions dodge needing one color to win both?">
+    The second frontier is the **control the ring wraps** — a ring has plural
+    adjacent colors, the page on one side and the component on the other. A
+    solid blue-9 ring around a blue-9 button measures **1.00:1** at that inner
+    frontier, a ring painted in its own invisibility. Two constructions dodge
+    the problem instead of hunting for one color that wins both: the **offset
+    ring** (a 2px gap of page color repaints the control frontier, as in dotUI's
+    `focus-ring` utility) and the **two-tone ring** (a light inner line against
+    dark controls, a dark outer line against light pages, so one of the two
+    always clears 3:1).
+  </Question>
+  <Question
+    q={`Why is --color-danger: #e5484d not a shippable status system? Name the four slots the mini-ramp needs, the two non-color carriers chapter 9 requires, and the reason the solid's label color can't be "white" across all four statuses.`}
+  >
+    Because a status color is a _role_, not a hex, and one value can't hold two
+    jobs at once — as a background it screams, as text on its own tint it's
+    illegible. The mini-ramp needs four slots: a **subtle background (step 2)**,
+    a **border (7)**, an **icon or solid (9)**, and **text (11)**. Meaning can't
+    ride on hue alone — red 9 and green 9 sit at ΔEok 0.053 under deuteranopia —
+    so every status also ships an **icon** and a **word**, with the color as
+    corroboration. And the label side flips per hue: white text clears only the
+    3:1 large-text bar on red 9 (3.91:1) and dies on amber 9 at 1.58:1, where
+    black clears 13.31:1. "White" is a red-9 answer applied blindly to four
+    different solids.
+  </Question>
+</Questions>
 
 ## Further reading
 

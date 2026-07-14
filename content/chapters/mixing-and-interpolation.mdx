@@ -5,6 +5,7 @@ part: 1
 question: Same two endpoints — who picks the middle?
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { TheGrayNobodyChose } from '@/components/playgrounds/the-gray-nobody-chose'
 import { TwoGraysReturn } from '@/components/playgrounds/two-grays-return'
 import { InterpolationLab } from '@/components/playgrounds/interpolation-lab'
@@ -115,11 +116,57 @@ Three, stacked from core to output.
 
 **Ramp steps are not interpolations.** Chapter 5's lineup already used `interpolate(seed → white)` as a _test instrument_, and even in the right space the result was an even staircase — not a designed scale. Interpolation answers "what lies between A and B" — one question, one route. A ramp answers ten different questions, one per step, each with its own lightness, chroma, and hue targets (chapters 11–13). Naive interpolation is the baseline every ramp philosophy in chapter 11 exists to beat.
 
-## Check yourself
+## Before you move on
 
-1. A teammate's `linear-gradient(#0000ff, #ffff00)` has a gray dead zone. Walk the arithmetic the browser is doing — what number is the dead zone, exactly, and on which ladder? Name two one-line edits that move the gradient to OKLab, and explain why `color-mix()` with the same two colors never had the problem.
-2. Three jobs: a realistic glow around a light source, a hover state that darkens the same visible amount across all brand hues, and a saturated two-color brand gradient that must not gray out in the middle. Name the interpolation space for each — and the toll the third one risks, in chapter 6's vocabulary.
-3. Two in-gamut brand colors, interpolated in OKLCH, render with a kinked, flattened band mid-gradient on an office monitor but look smoother on a P3 laptop. What happened to the path, and what is each screen doing about it, pixel by pixel?
+<Questions>
+  <Question q="A teammate's `linear-gradient(#0000ff, #ffff00)` has a gray dead zone. Walk the arithmetic the browser is doing — what number is the dead zone, exactly, and on which ladder? Name two one-line edits that move the gradient to OKLab, and explain why `color-mix()` with the same two colors never had the problem.">
+    Both endpoints are legacy sRGB (hex), so the browser follows the
+    compatibility rule and averages in gamma-encoded sRGB. Blue and yellow are
+    opposite corners of the sRGB cube; the straight line between them runs dead
+    through the gray center, so the midpoint is `#808080` — averaging encoded
+    values on the value ladder, which darkens and desaturates until, between two
+    vivid complements, the color dies.
+
+    Two one-line edits: in CSS, add the space — `linear-gradient(in oklab,
+    #0000ff, #ffff00)`; in code, pass the mode — `interpolate(['#0000ff',
+    '#ffff00'], 'oklab')`.
+
+    `color-mix()` is CSS Color 5, a new function with no legacy content to
+    protect, so it gets no carve-out: with no method specified it assumes
+    OKLab whatever notation the colors arrive in. Same two colors, different
+    default rule — so it never made the gray middle.
+
+  </Question>
+  <Question q="Three jobs: a realistic glow around a light source, a hover state that darkens the same visible amount across all brand hues, and a saturated two-color brand gradient that must not gray out in the middle. Name the interpolation space for each — and the toll the third one risks, in chapter 6's vocabulary.">
+    The glow is simulating light, where photons add — linear light
+    (`srgb-linear`). The hover state needs even perceived lightness across every
+    hue — OKLab, midpoints for eyes. The brand gradient must stay a color the
+    whole way rather than sag toward gray — OKLCH, which holds vividness and
+    lets you steer the route around the wheel.
+
+    The toll on the third is the gamut door: a vivid OKLCH road can hold
+    interpolated chroma through hues where the sRGB tent is low, asking for
+    chroma the screen doesn't have. When the path leaves the gamut, the browser
+    clips per channel, per pixel — so gamut-check the path, not just the
+    endpoints.
+
+  </Question>
+  <Question q="Two in-gamut brand colors, interpolated in OKLCH, render with a kinked, flattened band mid-gradient on an office monitor but look smoother on a P3 laptop. What happened to the path, and what is each screen doing about it, pixel by pixel?">
+    The endpoints are in gamut, but the OKLCH path between them holds chroma
+    through hues where the destination gamut's tent is low, so the road itself
+    leaves the gamut mid-gradient — a straight line in OKLCH's coordinates
+    carries no promise of staying inside, the way a straight line in sRGB's own
+    coordinates would.
+
+    Both screens clip per channel, per pixel on the way to the glass. The office
+    (sRGB) monitor has the lower ceiling, so more of the path overshoots and
+    gets clamped — that's the kinked, flattened band. The P3 laptop's wider
+    gamut swallows more of the same path, so there's less to clip and the band
+    reads smoother. Nothing changed about the gradient; the screens are just
+    doing more or less clipping of the same off-map road.
+
+  </Question>
+</Questions>
 
 ## Further reading
 

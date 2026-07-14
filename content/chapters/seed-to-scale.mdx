@@ -5,6 +5,7 @@ part: 2
 question: 'Paste any brand hex — where does it land, and what does shipping it verbatim cost?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { ThreeSeedsThreeSlots } from '@/components/playgrounds/three-seeds-three-slots'
 import { ChromaAmbition } from '@/components/playgrounds/chroma-ambition'
 import { WhoKeepsYourHex } from '@/components/playgrounds/who-keeps-your-hex'
@@ -97,11 +98,43 @@ The rewrite this chapter specs: read the seed once at the door — map it to the
 
 Two threads leave the door open. Whether a near-gray seed becomes a tinted neutral instead of an accent is chapter 15. And everything here generated one light-mode ramp — the same seed owes a second, differently-built ramp for dark backgrounds, which is chapter 16's problem.
 
-## Check yourself
+## Before you move on
 
-1. A pastel brand pink lands at step 2 by lightness, but the brand meant it as their button color. Name the two slotting rules in play, what each would do with the pastel, and which of the two can put the ladder out of order.
-2. The same seed goes into Radix's custom palette generator and into Material's default dynamic scheme. For each: which of the seed's three OKLCH numbers survives, and where — if anywhere — does the exact pasted color appear in the output?
-3. Snap and verbatim each keep one promise by breaking another. Name what each keeps, what each costs, and who controls that cost — the engine, or whoever picked the brand color.
+<Questions>
+  <Question q="A pastel brand pink lands at step 2 by lightness, but the brand meant it as their button color. Name the two slotting rules in play, what each would do with the pastel, and which of the two can put the ladder out of order.">
+    The two rules are **slotting by lightness** — nearest step by skeleton L,
+    which reads the seed's nature — and **slotting by job** — aim whatever you
+    paste at the solid's slot (step 9), which reads the brand's intent. By
+    lightness, the pastel lands at step 2: a subtle background, which is what a
+    pastel is. By job, it goes to step 9 regardless. Only the by-job rule can
+    reorder the ladder: forcing step 9 to be a pastel makes it lighter than step
+    8. Nearest-by-L keeps the seed at its own slot, so the worst it can do is
+    squeeze one neighbor gap — it can't reorder. Radix takes the by-job position
+    and survives it only because it rebuilds the whole scale around the seed
+    instead of dropping it onto a fixed skeleton.
+  </Question>
+  <Question q="The same seed goes into Radix's custom palette generator and into Material's default dynamic scheme. For each: which of the seed's three OKLCH numbers survives, and where — if anywhere — does the exact pasted color appear in the output?">
+    Radix keeps all three numbers: the seed is written verbatim into step 9
+    (`getStep9Colors` returns your accent color unchanged), so the exact pasted
+    color appears there — the only guard snaps a seed within ΔEOK 0.25 of the
+    background step. Material's default dynamic scheme keeps exactly one number,
+    the **hue**, and throws L and C away: the primary tonal palette is built at
+    a fixed policy chroma of 36, and roles take fixed tones from it. The exact
+    pasted color appears nowhere in the default output — Flutter's docs say so
+    outright. The separate `fidelity` variant exists to put the seed back, and
+    even it lands in the primary _container_ role, adjusted by about 5 tone.
+  </Question>
+  <Question q="Snap and verbatim each keep one promise by breaking another. Name what each keeps, what each costs, and who controls that cost — the engine, or whoever picked the brand color.">
+    **Snap** keeps system integrity — the skeleton's L, the audited contrast,
+    the even ladder — and costs brand fidelity: `#635bff` becomes `#7c66ff` at
+    its slot, ΔEOK 0.047. The engine controls that cost, since it chose the
+    slot's value. **Verbatim** keeps brand fidelity — the exact pasted color
+    ships — and costs the slot's contract: whatever guarantee that step
+    advertised now rides on a color the engine didn't pick. Whoever chose the
+    brand color controls that cost; the size of the drift is the size of their
+    seed's miss from the slot. Neither answer is wrong. Picking one silently is.
+  </Question>
+</Questions>
 
 ## Further reading
 

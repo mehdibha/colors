@@ -5,6 +5,7 @@ part: 2
 question: 'Same theme, different shipping techniques — what CSS does the engine actually emit?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { FlipLivesDownstairs } from '@/components/playgrounds/flip-lives-downstairs'
 import { FallbackTwoWays } from '@/components/playgrounds/fallback-two-ways'
 import { P3TwoWaysToShip } from '@/components/playgrounds/p3-two-ways-to-ship'
@@ -101,11 +102,51 @@ The emitted-CSS contract, stated as commitments:
 
 That closes Part 2. The engine now has a spec end to end: slots and guarantees (10), three curves (11–13), intake (14), neutrals (15), the dark pass (16), names and pairing (17), states and status (18), chart palettes (19), and the file that carries all of it (20). What's left is calibration — Part 3 reads five shipped systems against this spec, starting with the one this course has been measuring all along: Radix.
 
-## Check yourself
+## Before you move on
 
-1. A teammate adds `--brand: #4992dd;` directly above `--brand: oklch(0.6478 0.1337 251.06);` "for older browsers." Why is that hex line dead code, what actually happens in a browser without `oklch()` support, and where would a fallback have to live to work?
-2. You want a more vivid accent on P3 screens. Name both shipping routes, what each one hands an sRGB screen, and which of the two chapter 6 already convicted — including why this chapter's blue got away with it anyway.
-3. Your hover is one line: `color-mix(in oklab, var(--accent), black 8%)`, no overrides. What does it do in dark mode, and what are the two shipped ways to give the shift a per-mode sign without JavaScript?
+<Questions>
+  <Question
+    q={`A teammate adds \`--brand: #4992dd;\` directly above \`--brand: oklch(0.6478 0.1337 251.06);\` "for older browsers." Why is that hex line dead code, what actually happens in a browser without \`oklch()\` support, and where would a fallback have to live to work?`}
+  >
+    The classic two-declaration fallback relies on parse-time validation — an
+    old browser rejects the bad line and keeps the good one above it. Custom
+    properties aren't validated at parse time; they accept nearly any token
+    stream, so the _last_ declaration wins even in a browser that can't paint
+    it. The `oklch()` line clobbers the hex, and the failure surfaces later, at
+    `var()` substitution: per MDN the property becomes invalid at computed-value
+    time, so it uses its initial or inherited value. The button doesn't fall
+    back to the hex — it falls to transparent or inherits its parent's color. A
+    fallback that actually works has to live where the cascade can choose it: an
+    `@supports` block swapping the whole primitives file, or `@property` with an
+    `initial-value`. (In 2026 this is moot for the web anyway — Tailwind v4's
+    floor already assumes the syntax.)
+  </Question>
+  <Question q="You want a more vivid accent on P3 screens. Name both shipping routes, what each one hands an sRGB screen, and which of the two chapter 6 already convicted — including why this chapter's blue got away with it anyway.">
+    Route 1 is the bare wide literal: write the wide `oklch()` value once. P3
+    screens render the extra chroma; sRGB screens get channel clipping — the
+    thing chapter 6 (and the CSSWG record) calls least acceptable, because the
+    author never designed the sRGB rendering. Route 2 is the guarded upgrade:
+    emit the sRGB value you designed, then re-declare inside `@media
+    (color-gamut: p3)`. Now sRGB screens get a value gamut-mapped at build time
+    by your own algorithm, and P3 screens get the upgrade — both renderings are
+    designed. Route 1 is the convicted one. This chapter's blue got away with it
+    because the clip is genuinely mild — ΔEok 0.012, hue barely moves — since
+    damage scales with the overshoot and a chroma-only overshoot at mid
+    lightness clips gently. The engine doesn't get to pick gentle cases, though:
+    ship a wide light yellow the same way and you're back at chapter 6's
+    salmon-turned-red.
+  </Question>
+  <Question q="Your hover is one line: `color-mix(in oklab, var(--accent), black 8%)`, no overrides. What does it do in dark mode, and what are the two shipped ways to give the shift a per-mode sign without JavaScript?">
+    The mix is mode-blind: it darkens the accent by mixing toward black in
+    _both_ modes. In dark mode that's usually the wrong direction — you want
+    hover to lift off the dark surface, not sink into it — so the sign has to
+    flip per mode. Two ways to do that without JavaScript: a `.dark` override
+    that re-declares the alias mixing the other way, or a `light-dark()`
+    composition that folds both signs into one line — mix toward
+    `light-dark(black, white)`, so each mode picks the endpoint that moves the
+    color away from its own surface.
+  </Question>
+</Questions>
 
 ## Further reading
 

@@ -5,6 +5,7 @@ part: 3
 question: 'Pick any step of a real Radix scale — what job does it hold, and does the documented contract verify?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { RadixScaleExplorer } from '@/components/playgrounds/radix-scale-explorer'
 import { StepNineLineup } from '@/components/playgrounds/step-nine-lineup'
 import { SolidVsAlphaTwin } from '@/components/playgrounds/solid-vs-alpha-twin'
@@ -95,11 +96,44 @@ What dotUI's rewrite takes, judged against Part 2's spec:
 
 Next: the opposite philosophy. Tailwind ships eleven steps, no contracts, one shared skeleton — and more installed base than everyone else in Part 3 combined.
 
-## Check yourself
+## Before you move on
 
-1. Radix guarantees its text steps at "Lc 60 and Lc 90 … on top of a step 2 background." What did measurement find for dark-mode steps 11 and 12 against that promise, and which meter does the sentence never name?
-2. What exactly does an alpha twin promise, over which background does the dark twin composite correctly, and why does `blueA9` have no alpha channel at all?
-3. Your team proposes adopting Radix Colors wholesale as dotUI's engine output. Name two things from the steal list you'd keep, and the one property of dotUI's product that makes hand-tuning unusable as the pipeline.
+<Questions>
+  <Question
+    q={`Radix guarantees its text steps at "Lc 60 and Lc 90 … on top of a step 2 background." What did measurement find for dark-mode steps 11 and 12 against that promise, and which meter does the sentence never name?`}
+  >
+    Step 11 holds: sixteen dark scales cluster between Lc 60.0 and 61.0, tight
+    enough that the values were plainly _solved_ to Lc 60 — the guarantee is the
+    constraint they were generated under. Step 12 over-promises: nineteen of 31
+    scales measure under Lc 90 on their step 2, tomato worst at 84.2. It's not a
+    visible failure — six Lc — but it's a written number the file doesn't
+    contain. And the sentence names only APCA (`Lc`); it never mentions WCAG, so
+    in light mode six scales' step 11 sits under `4.5:1` — a floor the guarantee
+    was never promising to clear.
+  </Question>
+  <Question q="What exactly does an alpha twin promise, over which background does the dark twin composite correctly, and why does `blueA9` have no alpha channel at all?">
+    The twin promises to "appear visually the same when placed over the page
+    background" — the solid is correct on one background, the twin is
+    _plausible_ on all of them. The dark twin composites correctly over the dark
+    page (gray dark 1, `#111111`), not over pure black: composite it over black
+    instead and it misses by up to ΔEok 0.18. `blueA9` is `#0090ff` with no
+    alpha byte because step 9 is the purest step, already at full chroma —
+    there's no more-saturated color to dilute down to it, so the twin of a
+    full-chroma solid is just the solid.
+  </Question>
+  <Question q="Your team proposes adopting Radix Colors wholesale as dotUI's engine output. Name two things from the steal list you'd keep, and the one property of dotUI's product that makes hand-tuning unusable as the pipeline.">
+    Keep the job contracts — the slots, responsibilities, and a written
+    guarantee against named backgrounds — but state both meters, WCAG's floor
+    _and_ the APCA target, since Radix's APCA-only warranty leaves six light
+    scales under the body-text floor. And keep the alpha twins exactly as
+    constructed: one per scale per mode, solved against that mode's page, with
+    Radix as the reference to test against. The property that kills hand-tuning
+    as the pipeline: dotUI's input is an arbitrary seed from `/create`, so
+    there's no hand available at generation time. Radix's 2,976 hand-placed
+    values are payable once, for one fixed set of hues; an arbitrary seed needs
+    generation with contracts, not a reference nobody can author on demand.
+  </Question>
+</Questions>
 
 ## Further reading
 

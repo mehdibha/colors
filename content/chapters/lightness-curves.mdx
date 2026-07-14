@@ -11,6 +11,7 @@ import { LstarLocksContrast } from '@/components/playgrounds/lstar-locks-contras
 import { ContrastDrift } from '@/components/playgrounds/contrast-drift'
 import { MasterStepNines } from '@/components/playgrounds/master-step-nines'
 import { ThreePhilosophiesLab } from '@/components/playgrounds/three-philosophies-lab'
+import { Questions, Question } from '@/components/questions'
 
 Chapter 10 committed the contract: twelve slots, a job per slot, guarantees at the text end. This chapter starts paying for it. Of the three curves a ramp is made of — lightness, chroma, hue, one per chapter — lightness comes first because it does almost all the work: the jobs' spacing is lightness spacing, and chapter 8's meters run on luminance, so every contrast guarantee in the contract is, underneath, a claim about where L landed. **How L progresses from step 1 to step 12 is the core generation decision**, and the industry has settled into three genuinely different answers.
 
@@ -88,11 +89,48 @@ This isn't an abstract taxonomy — it's the fork dotUI's engine is standing at,
 
 What this chapter deliberately left dangling: every ramp here held chroma to one modest curve, and the yellow problem kept leaking through anyway — chroma against the gamut ceiling is chapter 12. The skeleton for a _dark_ background is not this skeleton flipped — chapter 16. And dropping an arbitrary brand seed onto whichever skeleton you chose is chapter 14's fight.
 
-## Check yourself
+## Before you move on
 
-1. Your lightness-anchored palette passes its 4.5:1 audit with the brand blue. Marketing changes the brand to a green of the same OKLCH lightness. What happens to the audit, and what fact about OKLCH L — versus CIELAB L\* — explains it?
-2. A contrast-anchored engine re-solves the palette when the app background shifts from white to warm gray. What stays exactly fixed, what moves, and why does "step 9 is our brand color" become a complicated sentence?
-3. At hue 100, the three philosophies ship a mustard, a dark passing olive, and a bright yellow with black text. Explain each output from its philosophy's promise — and name what the yellow-shipping philosophy gave up to be able to do that.
+<Questions>
+  <Question q="Your lightness-anchored palette passes its 4.5:1 audit with the brand blue. Marketing changes the brand to a green of the same OKLCH lightness. What happens to the audit, and what fact about OKLCH L — versus CIELAB L* — explains it?">
+    The audit can fail. Pinning the same OKLCH L and turning the hue toward
+    green raises the emitted luminance — the chapter's demo reads Y sliding from
+    0.212 at red to 0.260 at green, and white text's ratio dropping from 4.00:1
+    toward 3.39:1. The reason is that OKLCH L is _perceptual_ lightness, not a
+    pure function of the luminance WCAG measures, so at fixed L the actual Y
+    drifts with hue. CIELAB L\* is different: it _is_ a pure function of Y, so
+    fixing L\* fixes the ratio regardless of hue. Under OKLCH L anchoring,
+    contrast is an outcome you check afterward, not a promise the skeleton
+    keeps.
+  </Question>
+  <Question
+    q={`A contrast-anchored engine re-solves the palette when the app background shifts from white to warm gray. What stays exactly fixed, what moves, and why does "step 9 is our brand color" become a complicated sentence?`}
+  >
+    The contrast targets stay fixed — each step still hits its declared ratio
+    against the background, because the target is what the step _is_. What moves
+    is the lightness: L is solver output now, and dimming the background slides
+    all twelve steps down by roughly 0.03–0.10 L. So the palette isn't a set of
+    constants anymore; it's a function of the background. "Step 9 is our brand
+    color" stops being a fact and becomes "step 9 against _which_ background?" —
+    the value you'd hand a brand team depends on where it's rendered.
+  </Question>
+  <Question q="At hue 100, the three philosophies ship a mustard, a dark passing olive, and a bright yellow with black text. Explain each output from its philosophy's promise — and name what the yellow-shipping philosophy gave up to be able to do that.">
+    Lightness-anchored pins the same mid-L skeleton at every hue, but a
+    mid-lightness vivid yellow doesn't exist — yellow's gamut cusp is high — so
+    holding that L at hue 100 desaturates into a mustard; it keeps cross-hue
+    consistency and lets the color drift. Contrast-anchored solves L to hit the
+    step's target ratio against the background, and the only way yellow makes
+    that number is to darken into an olive that dutifully passes; it keeps the
+    guarantee by construction and gives up the hue's natural lightness. The
+    reference philosophy interpolates hand-tuned masters that know yellow stays
+    yellow by going light and flipping to dark text, so it ships an actual
+    bright yellow with black text; it keeps fidelity to a human's taste. What
+    that last one gives up is flexibility — the masters _are_ the design space
+    (these twelve steps, these jobs), so changing the step count, the
+    guarantees, or the aesthetic means re-tuning by hand, and blends gravitate
+    toward the references whether or not the seed fits them.
+  </Question>
+</Questions>
 
 ## Further reading
 

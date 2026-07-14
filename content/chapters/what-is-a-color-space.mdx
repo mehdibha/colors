@@ -5,6 +5,7 @@ part: 1
 question: Different colors, or different names for one color?
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { OneColorFourNames } from '@/components/playgrounds/one-color-four-names'
 import { SameNumbersDifferentRed } from '@/components/playgrounds/same-numbers-different-red'
 
@@ -37,11 +38,35 @@ Here's why the distinction stops being pedantic: **Display P3 uses the same mode
 
 That's also the answer to why your CSS now has `oklch()`, `color()`, and friends. They aren't redundant formats accumulating — they're different coordinate systems, each useful because it makes a different kind of statement easy: sRGB talks to screens, HSL talks to intuition (dishonestly — chapter 4), and OKLCH talks to perception. Choosing which space to _work_ in is one of the first real decisions of building a color system, and now you have the vocabulary for it.
 
-## Check yourself
+## Before you move on
 
-1. A teammate says "let's store colors as HSL instead of hex so we have access to more designer-friendly colors." What's right and what's wrong in that sentence?
-2. `rgb(255 0 0)` and `color(display-p3 1 0 0)` — same numbers. Same color? Why not?
-3. Define color space in one sentence without using the word "format."
+<Questions>
+  <Question
+    q={`A teammate says "let's store colors as HSL instead of hex so we have access to more designer-friendly colors." What's right and what's wrong in that sentence?`}
+  >
+    Right: HSL's hue/saturation/lightness knobs are friendlier for humans to
+    reason about than raw red/green/blue channels. Wrong: switching notation
+    gives you no new colors. HSL is just sRGB with the furniture rearranged —
+    the same three numbers run through a formula, naming the same point. You
+    don't gain a single color by storing HSL instead of hex; you only change how
+    the address is written.
+  </Question>
+  <Question q="`rgb(255 0 0)` and `color(display-p3 1 0 0)` — same numbers. Same color? Why not?">
+    Not the same color. They share the same model — three channels, 0 to 1 — but
+    each color space points those coordinates at different physical colors.
+    `rgb(255 0 0)` means the sRGB red; `color(display-p3 1 0 0)` means the P3
+    red, which is noticeably more intense. Same street address, different city:
+    the numbers mean nothing until a color space says what they mean.
+  </Question>
+  <Question
+    q={`Define color space in one sentence without using the word "format."`}
+  >
+    A color space is a color model plus a precise physical meaning — it pins
+    down exactly which red, which white point, and which brightness curve the
+    coordinates refer to, so that a set of numbers names an actual color rather
+    than an abstract point.
+  </Question>
+</Questions>
 
 ## Further reading
 

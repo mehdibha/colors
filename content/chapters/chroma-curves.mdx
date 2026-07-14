@@ -5,6 +5,7 @@ part: 2
 question: 'Your chroma curve fits blue perfectly — what survives when the hue turns to yellow?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { ConstantChromaStrip } from '@/components/playgrounds/constant-chroma-strip'
 import { RealChromaArcs } from '@/components/playgrounds/real-chroma-arcs'
 import { TwoCeilings } from '@/components/playgrounds/two-ceilings'
@@ -87,11 +88,42 @@ dotUI's engine today is strategy one. The default producer takes the seed's chro
 
 So the chroma decision is really three: the strategy (absolute-and-clamped, ceiling-relative, or per-hue smooth fit — knowing what each one costs), the peak's location (mid-scale or at the solids), and the reference tent (sRGB only today; a real P3 story means every scale carries two chroma curves, and chapter 20 decides how they ship). What stayed frozen this chapter: the hue column of every ramp — Radix bends hue along the scale, and that bend is chapter 13. And where the seed's chroma _comes from_ — what happens when a brand hands you C 0.23 at hue 350 — is chapter 14's fight.
 
-## Check yourself
+## Before you move on
 
-1. A brand guide mandates "all scale steps at C 0.18 for consistency." Give both reasons this ships something other than what it says — the one physics enforces at the scale's ends, and the one taste enforces even where the gamut would allow it.
-2. An engine stores its chroma curve as percentages of the gamut ceiling. Blue looks great; green comes out fluorescent at the same percentages. What fact about the two hues' ceilings explains the difference, and why doesn't the same problem appear at the near-white steps?
-3. Your absolute chroma curve fits blue, but at hue 110 half the steps clamp. Name three genuinely different fixes and the strategy each one belongs to.
+<Questions>
+  <Question
+    q={`A brand guide mandates "all scale steps at C 0.18 for consistency." Give both reasons this ships something other than what it says — the one physics enforces at the scale's ends, and the one taste enforces even where the gamut would allow it.`}
+  >
+    Physics first: the ceiling touches zero at both ends of the scale — at L 1
+    the only sRGB color is white, at L 0 only black — so the near-white and
+    near-black steps have almost no chroma budget. Ask for `0.18` where the
+    budget is ~`0.011` and the gamut hands back `0.011`; the step clamps and you
+    ship the ceiling, not the spec. Taste second: even where a wide enough gamut
+    would allow `0.18`, you wouldn't want it — a step-1 app background at that
+    chroma is candy paper, not a surface you can read a page on. The light end
+    doesn't want the chroma it can't have (Tailwind ships blue-50 at C `0.014`,
+    a tenth of the spec, and no one calls it gray).
+  </Question>
+  <Question q="An engine stores its chroma curve as percentages of the gamut ceiling. Blue looks great; green comes out fluorescent at the same percentages. What fact about the two hues' ceilings explains the difference, and why doesn't the same problem appear at the near-white steps?">
+    Green's tent is taller than blue's at the same lightness, so an equal
+    percentage buys far more chroma. At L `0.773`, 90% of the ceiling is C
+    `0.108` at blue — a usable blue — but C `0.219` at green, because green's
+    ceiling is roughly twice as tall there. Equal percentages are not equal
+    vividness. It doesn't show at the near-white steps because there every hue's
+    ceiling has already collapsed toward the same near-zero, so equal fractions
+    have no room to diverge — the divergence is a mid-scale problem.
+  </Question>
+  <Question q="Your absolute chroma curve fits blue, but at hue 110 half the steps clamp. Name three genuinely different fixes and the strategy each one belongs to.">
+    First, lower the absolute curve until it fits under every hue's ceiling,
+    including yellow-green's — strategy one, absolute-and-clamped, paying for it
+    in drabness everywhere else. Second, store the curve as a percentage of the
+    ceiling so it re-scales per hue and never clamps — strategy two, ceiling-
+    relative, paying for it in uneven vividness across hues. Third, draw hue 110
+    its own smooth arc that stays under its own tent, touching it only where you
+    want full vividness — strategy three, per-hue smooth fit, paying for it in
+    reference data per hue.
+  </Question>
+</Questions>
 
 ## Further reading
 

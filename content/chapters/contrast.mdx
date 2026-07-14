@@ -5,6 +5,7 @@ part: 1
 question: When the two contrast meters disagree, whose side is your eye on?
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { OrangeButtonVerdict } from '@/components/playgrounds/orange-button-verdict'
 import { RatioAnatomy } from '@/components/playgrounds/ratio-anatomy'
 import { PolarityFlipCard } from '@/components/playgrounds/polarity-flip-card'
@@ -113,11 +114,50 @@ Three Part 2 chapters pick up exactly this fork.
 
 One door stays deliberately closed: everything here assumed typical vision and default settings. Low-vision users, color-vision deficiencies, and `prefers-contrast` are chapter 9's subject — contrast for _whom_ is a bigger question than either meter answers.
 
-## Check yourself
+## Before you move on
 
-1. Walk the orange button through WCAG 2 by hand: Y is 0.3075 for the orange, 0 for black, 1 for white. Where does black's 7.15 actually come from — and why does APCA, which soft-clamps the dark end instead of dividing by a propped-up denominator, rank the two buttons the other way?
-2. A dark-mode theme's muted text passes 4.5:1 in the audit and users still report it's unreadable. Name the two constructions in WCAG 2's formula that let this pair through, and what APCA responds to that catches it.
-3. A teammate proposes switching CI's contrast checks from WCAG 2 to APCA "since WCAG 3 is around the corner." What's right in that sentence, what's wrong, and what should the pipeline do with each score?
+<Questions>
+  <Question q="Walk the orange button through WCAG 2 by hand: Y is 0.3075 for the orange, 0 for black, 1 for white. Where does black's 7.15 actually come from — and why does APCA, which soft-clamps the dark end instead of dividing by a propped-up denominator, rank the two buttons the other way?">
+    Black's ratio is `(0.3075 + 0.05) / (0 + 0.05)` = `0.3575 / 0.05` =
+    **7.15**. Almost all of that number is the denominator bottoming out at the
+    `0.05` flare constant — against black, _any_ background at Y ≥ 0.30 scores
+    7:1 or better automatically. So the 7.15 isn't measuring how well black
+    reads on orange; it's measuring how little light black emits. APCA
+    soft-clamps luminance near the dark end and works on differences of
+    compressed values instead of ratios of linear ones, so black stops being a
+    free jackpot. Scoring the actual reading rather than the emitted light, APCA
+    reverses the ranking — the white button wins, which is where most eyes
+    already were.
+  </Question>
+  <Question q="A dark-mode theme's muted text passes 4.5:1 in the audit and users still report it's unreadable. Name the two constructions in WCAG 2's formula that let this pair through, and what APCA responds to that catches it.">
+    First, WCAG 2 is **polarity-blind**: before dividing, it sorts the pair into
+    lighter and darker, so which color is the _text_ never enters the math —
+    light-on-dark and dark-on-light score identically. Second, the ratio runs on
+    **linear light**, but perception compresses it, so the same ratio of photons
+    is worth different amounts of _seen_ contrast at different absolute levels —
+    and it lands wrong in the dark. APCA catches the pair because it applies
+    different response curves to text and background (and different ones again
+    by which is lighter), so polarity and the dark end both register: it scored
+    that muted pair Lc −35.3, below its floor for body text, where WCAG waved
+    through 4.52:1.
+  </Question>
+  <Question
+    q={`A teammate proposes switching CI's contrast checks from WCAG 2 to APCA "since WCAG 3 is around the corner." What's right in that sentence, what's wrong, and what should the pipeline do with each score?`}
+  >
+    What's right: APCA really is the candidate contrast method for WCAG 3, and
+    it catches real failures the ratio waves through — the dark-mode and
+    mid-tone pairs from this chapter. What's wrong: WCAG 3 is years away (still
+    a Working Draft that says of itself it has "several years of work"), it
+    won't retire WCAG 2 when it lands, and APCA today is a beta-stable candidate
+    — an APCA pass is not a compliance claim you can make to anyone. So don't
+    switch; add. Keep WCAG 2 as the hard gate — the compliance floor the outside
+    world can hold you to, never ship a default pairing below it — and run APCA
+    alongside as the design instrument: use it to choose among passing
+    candidates and to flag the dark-mode pairs the ratio missed. The one thing
+    the pipeline must never do is let an APCA pass excuse a 4.5:1 fail, or treat
+    4.5:1 as evidence the text actually reads well.
+  </Question>
+</Questions>
 
 ## Further reading
 

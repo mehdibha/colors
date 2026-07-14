@@ -5,6 +5,7 @@ part: 3
 question: 'Pick a key color and two tones — does the tone gap alone predict the contrast you measure?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { EqualToneEqualContrast } from '@/components/playgrounds/equal-tone-equal-contrast'
 import { ToneDeltaRule } from '@/components/playgrounds/tone-delta-rule'
 import { M3RoleCard } from '@/components/playgrounds/m3-role-card'
@@ -89,11 +90,40 @@ What dotUI's rewrite takes, judged against Part 2's spec:
 
 Next: Adobe Spectrum and Leonardo — the philosophy HCT bakes into a space, shipped instead as a solver, with the meter itself left switchable.
 
-## Check yourself
+## Before you move on
 
-1. The tone rule says Δ40 guarantees 3.0:1 and Δ50 guarantees 4.5:1. Which delta holds everywhere with margin, and which one misses its written floor — at which end of the tone axis, and on what kind of pair? And why can a tone difference bound a WCAG ratio in the first place, when OKLCH L can't?
-2. Dynamic color builds a scheme from Spotify green `#1db954`. Which of the seed's three HCT numbers survives into the primary palette, what chroma does primary actually receive, and does the pasted color appear anywhere in the output?
-3. The steal list takes the tone-delta mechanism but not the space. Name the conversion that gives an OKLCH engine the same WCAG lock at check time, and the two needs HCT's geometry can't serve anyway.
+<Questions>
+  <Question q="The tone rule says Δ40 guarantees 3.0:1 and Δ50 guarantees 4.5:1. Which delta holds everywhere with margin, and which one misses its written floor — at which end of the tone axis, and on what kind of pair? And why can a tone difference bound a WCAG ratio in the first place, when OKLCH L can't?">
+    Δ40 holds everywhere with margin — its worst case is `3.170:1` at tones
+    60/100. Δ50 is the one that misses: its floor is really `4.484:1`, at the
+    white end of the axis (tone 50 against tone 100), a `0.016` shortfall under
+    the written ≥ 4.5 — and it lands on exactly the pair a designer reaches for,
+    a mid-tone button with white text. A tone difference can bound a WCAG ratio
+    at all because HCT's tone is `L*` from CIELAB unchanged, and `L*` is a pure
+    function of the relative luminance `Y` that sits inside WCAG's contrast
+    formula. Fix the tone and you've fixed the WCAG-relevant quantity. OKLCH's
+    `L` is a different lightness measure, not tied to `Y`, so it doesn't lock
+    the ratio.
+  </Question>
+  <Question q="Dynamic color builds a scheme from Spotify green `#1db954`. Which of the seed's three HCT numbers survives into the primary palette, what chroma does primary actually receive, and does the pasted color appear anywhere in the output?">
+    Only the hue survives — the default TonalSpot scheme keeps precisely one of
+    the seed's three numbers. Chroma is policy, not the seed's: primary receives
+    chroma `36`, regardless that Spotify's green carries chroma 69.7. And the
+    pasted color does not appear anywhere — `#1db954` comes out as primary
+    `#36693e`, ΔEok 0.237 from the brand. Fidelity wasn't lost; it was traded,
+    in writing, for a system whose every pairing is guaranteed by construction.
+  </Question>
+  <Question q="The steal list takes the tone-delta mechanism but not the space. Name the conversion that gives an OKLCH engine the same WCAG lock at check time, and the two needs HCT's geometry can't serve anyway.">
+    Convert any candidate to `L*` at check time — `L*` is a pure function of
+    WCAG's `Y` — and enforce "keep these two roles N apart." That recovers HCT's
+    WCAG lock without adopting the space. The two needs the geometry can't serve
+    either way: APCA's `Lc`, which isn't a function of `ΔL*` (it changes with
+    polarity and clamps near black), so no tone rule for it can exist and it
+    needs measurement under either space; and the exact ratio of a given pair,
+    since the tone delta only guarantees a floor — the `+0.05` flare terms mean
+    the precise ratio still has to be measured.
+  </Question>
+</Questions>
 
 ## Further reading
 

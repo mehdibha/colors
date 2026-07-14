@@ -5,6 +5,7 @@ part: 2
 question: "How much of your accent's hue can the grays carry before they stop being gray?"
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { PureVsTintedUI } from '@/components/playgrounds/pure-vs-tinted-ui'
 import { SlateWhisperArc } from '@/components/playgrounds/slate-whisper-arc'
 import { RadixGrayPairings } from '@/components/playgrounds/radix-gray-pairings'
@@ -87,11 +88,42 @@ The rewrite this chapter specs: keep auto-tint-from-the-accent as the default �
 
 Left open, on purpose: the dark twin of every number in this chapter is chapter 16; naming the neutral slots so components can consume them (`bg`, `surface`, `border`, `fg-muted`) is chapter 17; and the alpha-based grays Radix ships alongside these are chapter 18's.
 
-## Check yourself
+## Before you move on
 
-1. A teammate builds the neutral ramp at C 0 exactly, arguing "gray is gray." What do shipped systems do instead — roughly what chroma range, tinted toward what — and what breaks visually if you push that same dial to C 0.05?
-2. Tinting a neutral ramp changes each step's hue and chroma but leaves its lightness alone. Why do the text-contrast contracts barely move, and what does that tell you about which axis the contracts actually live on?
-3. Your product ships a jade accent. Which Radix gray is the natural pairing and what measurement backs it — and what does choosing pure `gray` instead trade away, and when is that the right call?
+<Questions>
+  <Question
+    q={`A teammate builds the neutral ramp at C 0 exactly, arguing "gray is gray." What do shipped systems do instead — roughly what chroma range, tinted toward what — and what breaks visually if you push that same dial to C 0.05?`}
+  >
+    Pure gray at C 0 isn't wrong, but it reads as _detached_ — the button looks
+    pasted onto a screen with no opinion about it. Shipped systems lean the
+    grays a few thousandths of chroma toward the accent's hue so surfaces and
+    accent read as one system. The whole move lives below C 0.02: Radix's five
+    tinted grays sit between C 0.0102 and 0.0193 at step 9, with slate peaking
+    at 0.0165 — under the 0.02 just-noticeable threshold, letting area do the
+    arguing. Push the dial to C 0.05 and the gray stops being gray: the sidebar
+    becomes a lavender surface, and you land in the 0.02–0.045 no-man's-land
+    where nothing ships, because nothing that chromatic reads as a
+    background-grade neutral.
+  </Question>
+  <Question q="Tinting a neutral ramp changes each step's hue and chroma but leaves its lightness alone. Why do the text-contrast contracts barely move, and what does that tell you about which axis the contracts actually live on?">
+    Both of chapter 8's contrast meters are driven almost entirely by luminance,
+    and tinting changes hue and chroma at near-constant lightness — so the tint
+    barely touches the number the contracts depend on. The worst-case shift is a
+    tenth, and that on a 16:1 ratio. So text contracts, border visibility, and
+    state spacing all survive any whisper you choose. The contracts live on the
+    lightness skeleton; tint amount and temperature are aesthetic axes layered
+    on top, and tinting never touches the skeleton.
+  </Question>
+  <Question q="Your product ships a jade accent. Which Radix gray is the natural pairing and what measurement backs it — and what does choosing pure `gray` instead trade away, and when is that the right call?">
+    Sage is the pairing — Radix documents it as "based on" a jade-adjacent hue,
+    and the measurement confirms it: sage sits at h 171.6, within a degree of
+    jade's 170.7. The gray is literally the accent's hue with the chroma turned
+    down to a hundredth. Choosing pure `gray` trades away that unified
+    temperature — the neutral refuses to commit to jade. That refusal is correct
+    when the product has many accents or none: Radix keeps pure gray precisely
+    because it "will work well with any hue or palette."
+  </Question>
+</Questions>
 
 ## Further reading
 

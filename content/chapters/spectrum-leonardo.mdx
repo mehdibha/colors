@@ -5,6 +5,7 @@ part: 3
 question: 'Name the background and the target ratios — what does the solver hand back, and what does it trade away?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { KeyColorsAreAnchors } from '@/components/playgrounds/key-colors-are-anchors'
 import { AdaptiveThemeStrip } from '@/components/playgrounds/adaptive-theme-strip'
 import { MeterSwapSolve } from '@/components/playgrounds/meter-swap-solve'
@@ -95,11 +96,51 @@ What dotUI's rewrite takes, judged against Part 2's spec:
 
 Next, the last case study: Vercel's Geist — what a design system's color story looks like when it's young, opinionated, and shipped by a company whose whole aesthetic is restraint.
 
-## Check yourself
+## Before you move on
 
-1. A Leonardo `Color` declaration contains hex values, yet chapter 14 filed it under "the seed ships only by accident." What are the `colorKeys` actually for, where do the shipped swatches come from, and why does sliding the theme's `lightness` re-derive every one of them?
-2. The same blue declaration, solved on a dark background: the default formula hands back a swatch at 4.5:1 that APCA scores around Lc −35. Which chapter-8 construction is being industrialized here, and what single constructor parameter changes the outcome — at what standards-status cost?
-3. The steal list takes contrast-as-input for text steps but keeps the anchored skeleton for surfaces. What does full contrast-anchoring cost that made the hybrid the better spec — and what does Spectrum itself do that reconciles "adaptive by construction" with shipping static CSS?
+<Questions>
+  <Question
+    q={`A Leonardo \`Color\` declaration contains hex values, yet chapter 14 filed it under "the seed ships only by accident." What are the \`colorKeys\` actually for, where do the shipped swatches come from, and why does sliding the theme's \`lightness\` re-derive every one of them?`}
+  >
+    The `colorKeys` are the art, not the output — they steer which hue and
+    chroma the scale passes through. Leonardo appends white and black to the
+    sorted keys, interpolates that whole path, and samples it into 3,000
+    swatches; then, for each target ratio, a binary search walks the samples for
+    the one whose measured contrast against the background hits the target. So
+    the shipped swatches are solver output — your key colors ship only if a
+    ratio happens to land on one. Sliding `lightness` re-derives everything
+    because the background is itself a scale that `lightness` indexes into, and
+    every color was defined only _relative to_ the background — move it, and
+    every ratio re-solves against the new reference.
+  </Question>
+  <Question q="The same blue declaration, solved on a dark background: the default formula hands back a swatch at 4.5:1 that APCA scores around Lc −35. Which chapter-8 construction is being industrialized here, and what single constructor parameter changes the outcome — at what standards-status cost?">
+    That gap is chapter 8's flare-term over-credit: WCAG 2 rates the dark pair
+    as 4.5:1 while APCA reads it near Lc −35, so under the default `wcag2`
+    formula that over-credit gets baked into every swatch of every dark theme,
+    not just flagged in an audit. The one parameter is `formula` — flip it from
+    the default `'wcag2'` to `'wcag3'` and the search swaps its ruler to APCA,
+    with targets read as Lc. The cost is standards status: APCA is a candidate,
+    not a normative standard, so anchoring compliance-critical output to `wcag3`
+    builds on a candidate rather than the standard. Chapter 8's trade, compiled
+    into the generator either way.
+  </Question>
+  <Question
+    q={`The steal list takes contrast-as-input for text steps but keeps the anchored skeleton for surfaces. What does full contrast-anchoring cost that made the hybrid the better spec — and what does Spectrum itself do that reconciles "adaptive by construction" with shipping static CSS?`}
+  >
+    Full contrast-anchoring turns the whole palette into a _function_ of the
+    background: "what's our step 400?" has no answer until a background is
+    named, and the L skeleton itself slides when the background moves. That
+    breaks static export — CSS ships values, not functions — and gives up
+    chapter 20's build-time pre-verification and tokens-as-constants unless you
+    ship the solver to the client and re-derive everything at runtime. So the
+    hybrid keeps the anchored skeleton for the surface and component steps
+    (constants, cross-hue consistency) and solves only the text-grade slots, per
+    mode, at build time. Spectrum's own resolution is to evaluate the function
+    at a few named points — light, dark, darkest — and freeze them: adaptive
+    generation, static runtime. Adaptivity lives in the generator, not the
+    bundle.
+  </Question>
+</Questions>
 
 ## Further reading
 

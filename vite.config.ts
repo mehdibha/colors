@@ -17,9 +17,13 @@ export default defineConfig({
     include: [
       'culori',
       'react-aria',
+      'react-aria-components/Button',
+      'react-aria-components/Disclosure',
+      'react-aria-components/Heading',
       'react-aria-components/Slider',
       'react-aria-components/ToggleButton',
       'react-aria-components/ToggleButtonGroup',
+      'react-aria-components/composeRenderProps',
     ],
   },
   resolve: {

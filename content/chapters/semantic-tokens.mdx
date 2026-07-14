@@ -5,6 +5,7 @@ part: 2
 question: 'Repoint one semantic token — what follows it, and which pairing promises break?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { OneTokenChain } from '@/components/playgrounds/one-token-chain'
 import { NumericVsSemantic } from '@/components/playgrounds/numeric-vs-semantic'
 import { TheGeneratorsPick } from '@/components/playgrounds/the-generators-pick'
@@ -104,11 +105,62 @@ dotUI's token taxonomy — the tiers and the grammar — is the part of the curr
 
 Left open, on purpose: the full state matrix and alpha overlays (hover/active/disabled as tokens versus computed states) are chapter 18; actually shipping this table as CSS — custom properties, `@theme`, P3 fallbacks — is chapter 20; Radix's and Material's full architectures are chapters 21 and 23.
 
-## Check yourself
+## Before you move on
 
-1. A teammate adds `--color-cta-blue: #2563eb` to the theme "for the marketing button." Name the two ways this token breaks the tier system, and write the token (or tokens) that should exist instead.
-2. Your `fg-on-accent` passes 4.5:1 on `bg-accent` in light mode. List everything else that must be true before you're allowed to call the pairing "guaranteed" — think meters, modes, and chapter 10's anatomy of a contrast promise.
-3. `text-blue-11` and `text-fg-accent` can paint the same pixel. What does each name tell a reader that the other doesn't, and which of the two can a generator or CI check hold to a promise? Why?
+<Questions>
+  <Question
+    q={"A teammate adds `--color-cta-blue: #2563eb` to the theme \"for the marketing button.\" Name the two ways this token breaks the tier system, and write the token (or tokens) that should exist instead."}
+  >
+    First, it hardcodes a raw value where a semantic token should point at a
+    primitive. A semantic token is a decision expressed as a pointer — repoint
+    the alias and everything follows, and it re-resolves per mode. A frozen hex
+    can do neither: it's a primitive wearing a semantic name, and it'll carry
+    light's value straight into dark mode where it may fail.
+
+    Second, `cta-blue` names a use case, not a role — the "avoid CardBg" problem
+    one level up. It also ships no `fg-on-*` partner, so its text pairing is
+    undefined; a surface with no guaranteed foreground isn't a promise.
+
+    The fix is almost always to reuse the `accent` role — `bg-accent` with its
+    `fg-on-accent` partner — since a marketing button is just the brand surface.
+    If per-component theming is genuinely wanted, a component-tier token
+    (`--button-bg`) that _aliases_ into the semantic `accent` tier, never a raw
+    hex.
+
+  </Question>
+  <Question
+    q={"Your `fg-on-accent` passes 4.5:1 on `bg-accent` in light mode. List everything else that must be true before you're allowed to call the pairing \"guaranteed.\""}
+  >
+    4.5:1 is one meter, one bar, one mode. Chapter 8's rule: a contrast promise
+    is meaningless until it names its meter and its bar — 4.5:1 is WCAG for
+    normal text, but large or bold text sits at 3:1, so the bar depends on what
+    the token actually paints.
+
+    Modes multiply the ledger. The same slot must be re-verified in dark and in
+    high-contrast — three resolutions, and the `fg-accent` row exists precisely
+    because carrying light's value into the dark room fails. And the rewrite's
+    posture is both meters, not one: the generated partner must clear the WCAG
+    floor _and_ an APCA target per mode. Only when black-or-white clears every
+    one of those, in every mode, is the pairing guaranteed — otherwise the
+    honest fix is to move the solid it sits on.
+
+  </Question>
+  <Question q="`text-blue-11` and `text-fg-accent` can paint the same pixel. What does each name tell a reader that the other doesn't, and which of the two can a generator or CI check hold to a promise? Why?">
+    `text-blue-11` encodes position in the ramp and nothing about purpose —
+    maximally flexible, completely opaque, and it never warns you when step 11
+    lands on a step-5 background. `text-fg-accent` encodes the decision ("accent
+    foreground") but hides which primitive it currently resolves to.
+
+    Only the semantic name can be held to a promise. `fg-accent` names a role
+    paired with a surface (`bg-accent`), so a checker knows both parties and can
+    verify the contrast between them — this is why the lab's checker catches a
+    broken pairing: the promise names both parties. `text-blue-11` names only a
+    value with no declared partner, so nothing tells CI what it's supposed to
+    contrast against. The promise lives in the semantic layer, which is exactly
+    why numeric systems tell you to build that layer yourself.
+
+  </Question>
+</Questions>
 
 ## Further reading
 

@@ -5,6 +5,7 @@ part: 3
 question: 'Twenty-six families ride one lightness skeleton — where does it hold, where does it bend, and what does it never promise?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { TailwindSkeletonPlot } from '@/components/playgrounds/tailwind-skeleton-plot'
 import { Gray500Verdict } from '@/components/playgrounds/gray-500-verdict'
 import { YellowHuePath } from '@/components/playgrounds/yellow-hue-path'
@@ -93,11 +94,48 @@ What dotUI's rewrite takes, judged against Part 2's spec:
 
 Next: the system that made the opposite trade on every axis at once — Material's HCT, where the tone number _is_ the contract and hue constancy is enforced on principle.
 
-## Check yourself
+## Before you move on
 
-1. `text-gray-500` on white passes 4.5:1. Name two conventional pairs a reader would assume are just as safe that actually fail, and explain what Radix ships that makes the same question answerable without opening a contrast checker.
-2. The v4.0 announcement claims more vivid colors via the wider gamut, with the v3 balance kept. What did measurement find for both claims — and what exactly does an sRGB screen do with the 95 values involved?
-3. Describe the shape of Tailwind's lightness skeleton — where it's tight, where it fans, and why — and what happened to yellow-500 when the flagship's contrast-anchored ghost re-solved it.
+<Questions>
+  <Question q="`text-gray-500` on white passes 4.5:1. Name two conventional pairs a reader would assume are just as safe that actually fail, and explain what Radix ships that makes the same question answerable without opening a contrast checker.">
+    `text-gray-500` scores 4.84:1 on white — it passes AA by 0.34, and the
+    convention borrows that margin without stating it. Move the same class onto
+    a `gray-100` card and it drops to 4.39 and fails; the placeholder habit of
+    `text-gray-400` was never close at 2.60; and `olive-500`, added in v4.2 into
+    the same numeric grammar, fails on white at 4.25 while gray-500 passes. Same
+    step number, same conventional job, different verdict — and nothing in
+    Tailwind says so. Radix ships a job contract instead: named text steps (11
+    and 12) with a written guarantee to clear contrast against the family's own
+    background steps, so you pick by role and the ratio is promised, no checker
+    required.
+  </Question>
+  <Question q="The v4.0 announcement claims more vivid colors via the wider gamut, with the v3 balance kept. What did measurement find for both claims — and what exactly does an sRGB screen do with the 95 values involved?">
+    Both claims hold. Ninety-five of the 286 values sit outside sRGB — every
+    chromatic family participates, no neutral does, and all 286 fit inside P3 —
+    so the wider-gamut vividness claim verifies with a number. The balance-kept
+    claim verifies more precisely than the sentence promised: the regeneration
+    held OKLCH `L` to three decimals (blue 0.623, red 0.637, yellow 0.795, green
+    0.723) and spent the gamut headroom entirely on chroma (blue C 0.188 →
+    0.214, red 0.208 → 0.237). As for the 95 wide values: they ship as bare
+    `oklch()` literals with no `@media (color-gamut: p3)` guard, so an sRGB
+    screen gets the browser's per-channel clip. The clip is mild by design — the
+    worst case is ΔEok 0.026 at yellow-400, and only four values exceed the 0.02
+    just-noticeable difference.
+  </Question>
+  <Question q="Describe the shape of Tailwind's lightness skeleton — where it's tight, where it fans, and why — and what happened to yellow-500 when the flagship's contrast-anchored ghost re-solved it.">
+    It's anchored at the ends and fanned in the middle. At 50 and 950 all
+    seventeen chromatic families sit within ±0.03 L of the median — a genuinely
+    shared skeleton, exactly where the background and text jobs live. By the
+    vivid middle it splays: at 500 the spread is 0.21 L, from indigo at 0.585 up
+    to yellow at 0.795, because each family bends toward its own chroma peak —
+    chapter 12's tent shaping the palette per hue. (The neutrals ride a lower
+    ladder mid-scale, since a gray's 500 is muted text, not a button fill.) The
+    contrast-anchored ghost re-solves every step to emit gray's luminance,
+    collapsing the fan onto one contrast ladder — and yellow-500 drops from L
+    0.795 to about 0.55, a mustard. That's the promise Tailwind didn't make:
+    names stay vivid, ratios don't stay fixed.
+  </Question>
+</Questions>
 
 ## Further reading
 

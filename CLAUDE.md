@@ -6,7 +6,7 @@ The site's deeper purpose: the maintainer is learning color deeply enough to rew
 
 ## The publish gate (non-negotiable workflow)
 
-Claude drafts chapters and playgrounds, but a chapter flips to `published` only after the maintainer has worked through it: asked their questions (**questions become revisions** — reshape the chapter until it's clear), done a voice pass on the prose, and can answer its "Check yourself" questions. Drafting may run ahead of publishing; publishing follows the maintainer's pace. If they're skimming instead of verifying, say so — that's the failure mode this workflow exists to prevent.
+Claude drafts chapters and playgrounds, but a chapter flips to `published` only after the maintainer has worked through it: asked their questions (**questions become revisions** — reshape the chapter until it's clear), done a voice pass on the prose, and can answer its "Before you move on" questions. Drafting may run ahead of publishing; publishing follows the maintainer's pace. If they're skimming instead of verifying, say so — that's the failure mode this workflow exists to prevent.
 
 Status (2026-07-12): all 25 chapters are drafted. Chapters 1–16 are live on colors.dotui.org (merged to main); chapters 17–25 sit on the `chapters` branch (draft PR #5). **No chapter has passed the maintainer's publish gate yet** — expect revision requests against any of them, and merging PR #5 (= deploying 17–25) is the maintainer's call after their pass. Drafting-pipeline state lives in `.pipeline/` (gitignored).
 
@@ -22,7 +22,7 @@ Scope guards (the outline came from a multi-agent gap audit — it's settled; ad
 ## Content rules
 
 - **One chapter = one decision.** Show, don't describe: use as many interactives as the chapter needs, at two grades. The **flagship playground** (shared `Playground` frame) answers the frontmatter `question` — one per chapter. **Minimal demos** (`Demo` frame — static or one control, no chrome) sit next to any paragraph that describes something visual; if the reader has to imagine what a color looks like, that's a missing demo, not acceptable prose.
-- Chapter anatomy: frontmatter (`title`, `description`, `part`, `question`) → prose with playground(s) inline → `## Check yourself` (2–3 questions answerable without scrolling up) → `## Further reading` (primary sources).
+- Chapter anatomy: frontmatter (`title`, `description`, `part`, `question`) → prose with playground(s) inline → `## Before you move on` (2–3 questions answerable without scrolling up, wrapped in the `<Questions>`/`<Question>` component with a revealable model answer per question) → `## Further reading` (primary sources).
 - **Verify every factual claim against primary sources while drafting** — Ottosson's OKLab posts, the CSS Color 4 spec, WCAG/APCA docs, the systems' own docs for case studies. Wrong prose on a learning site is worse than wrong code: nothing fails loudly.
 - Honesty bar: teach all three ramp-generation philosophies (lightness-anchored, contrast-anchored, hand-tuned reference) with trade-offs — never dismiss a technique without a playground demonstrating why. State standards status plainly (WCAG 2 is the normative standard; APCA is not yet one).
 - Prose reads in the maintainer's voice: direct, short paragraphs, no hype. Minimal code comments (one terse line max, only for non-obvious reasoning).

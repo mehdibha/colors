@@ -5,6 +5,7 @@ part: 1
 question: Which gray is halfway between black and white?
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { HalfLightCheckerboard } from '@/components/playgrounds/half-light-checkerboard'
 import { ValueVsLightCurve } from '@/components/playgrounds/value-vs-light-curve'
 import { StepsSpentTwoWays } from '@/components/playgrounds/steps-spent-two-ways'
@@ -72,11 +73,37 @@ Every color operation belongs to one ladder, and picking the wrong one is the mo
 
 Here's the Part 2 decision this chapter unlocks: when you build color ramps in **chapter 11, "Lightness curves and the three philosophies,"** every philosophy on the table defines "evenly spaced steps" on some ladder. You now know there are three, that they disagree wildly, and that only the perceptual one matches what users will see. A ramp spaced evenly in values is subtly uneven; spaced evenly in light, wildly so — and now you can say exactly why.
 
-## Check yourself
+## Before you move on
 
-1. `#808080` and `#bcbcbc` both claim to be "50% gray." In what sense is each one right?
-2. A teammate averages two colors channel-by-channel on their hex values to get a midpoint. What did they actually average — and why does the result usually look only slightly wrong instead of catastrophically wrong?
-3. Gradients and blurs are coming out with dark, muddy middles. Which ladder is the math running on, and which should it run on?
+<Questions>
+  <Question
+    q={`\`#808080\` and \`#bcbcbc\` both claim to be "50% gray." In what sense is each one right?`}
+  >
+    `#808080` is 128 — the number halfway between 0 and 255, so it's the
+    midpoint on the _value_ ladder. `#bcbcbc` is 188, the gray that emits half
+    of white's light, so it's the midpoint on the _linear light_ ladder. Both
+    are genuinely "50%," just on different ladders. And neither matches your
+    eye: measured, most people call something near `rgb(119 119 119)` halfway,
+    which sits close to the value ladder and nowhere near the light one.
+  </Question>
+  <Question q="A teammate averages two colors channel-by-channel on their hex values to get a midpoint. What did they actually average — and why does the result usually look only slightly wrong instead of catastrophically wrong?">
+    They averaged gamma-encoded _values_, not light — so the true midpoint (add
+    the photons, then re-encode) comes out darker than what they computed. It
+    only looks slightly off because sRGB values are a rough perceptual scale:
+    the encoding was designed to step in increments your eye considers roughly
+    even, so value-math lands near where perception expects it. Rough is not
+    calibrated, though — that "almost" is doing heavy lifting, and it's exactly
+    the near-miss that wrecks HSL later.
+  </Question>
+  <Question q="Gradients and blurs are coming out with dark, muddy middles. Which ladder is the math running on, and which should it run on?">
+    It's running on gamma-encoded values — averaging `(0 + 255) / 2`-style,
+    which is what most software does, including CSS filters (the spec requires
+    it). It should run on linear light: blending, blurring, and resizing are
+    simulating photons, and photons add linearly. Averaging encoded values
+    instead lands too low on the light ladder, which is why the middles come out
+    systematically too dark.
+  </Question>
+</Questions>
 
 ## Further reading
 

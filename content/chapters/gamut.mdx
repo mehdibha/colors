@@ -5,6 +5,7 @@ part: 1
 question: You named a color your screen can't show — what shows up instead?
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { SeamRevisited } from '@/components/playgrounds/seam-revisited'
 import { TentUnrolled } from '@/components/playgrounds/tent-unrolled'
 import { GamutSlice } from '@/components/playgrounds/gamut-slice'
@@ -84,11 +85,44 @@ Two engine decisions come straight out of this chapter.
 
 One door stays closed a little longer: this chapter placed single colors against the edge. Chapter 7 moves _between_ colors — and a gradient between two in-gamut colors can still swing outside on the way.
 
-## Check yourself
+## Before you move on
 
-1. A teammate writes `oklch(0.9 0.4 30)` expecting a vivid light salmon and gets fire-engine red. What did the browser do, step by step — and what would the CSS gamut-mapping algorithm have returned instead?
-2. A style guide declares "all accents use `oklch(0.45 0.31 H)` for consistency." It works for blue. What shape fact guarantees it fails for yellow, and what would you have to give up to keep one C across all hues?
-3. QA reports that two status colors, tuned on a P3 MacBook, "look identical" on an office monitor. What happened at the gamut boundary — and which chapter 2 demo was the preview of this bug?
+<Questions>
+  <Question q="A teammate writes `oklch(0.9 0.4 30)` expecting a vivid light salmon and gets fire-engine red. What did the browser do, step by step — and what would the CSS gamut-mapping algorithm have returned instead?">
+    The color is far outside sRGB, so the browser did what every engine ships
+    today: converted it to the display's RGB and clamped each channel into
+    range. Per-channel clipping changes all three channels at once, and the
+    three channels _were_ the color, so it lands at `#ff0000` — L 0.63, a
+    lightness crash of 0.27 from the 0.9 you asked for. The CSS gamut-mapping
+    algorithm holds L and H and walks chroma back toward gray instead, returning
+    `#ffccc1` — a light pink at L 0.89, hue held to within a just-noticeable
+    difference. Same input, and the spec's rescue keeps the color _itself_ where
+    clipping wrecked it.
+  </Question>
+  <Question
+    q={`A style guide declares "all accents use \`oklch(0.45 0.31 H)\` for consistency." It works for blue. What shape fact guarantees it fails for yellow, and what would you have to give up to keep one C across all hues?`}
+  >
+    Maximum chroma is a joint function of lightness _and_ hue — the gamut is a
+    tent, not a cylinder. Blue's cusp sits dark (`#0000ff` is `oklch(0.452 0.313
+    264)`), so `0.45 0.31` lands right on blue's edge. Yellow's peak is nearly
+    white (`#ffff00` is `oklch(0.968 0.211 110)`) and its chroma at L 0.45 is
+    nowhere near 0.31, so the yellow accent falls outside the gamut and gets the
+    bad fallback. To keep one C across all hues you'd have to clamp to the
+    worst-case hue's ceiling at that L — chapter 5's demo trick — giving up
+    every hue's real vividness to stay honest everywhere.
+  </Question>
+  <Question
+    q={`QA reports that two status colors, tuned on a P3 MacBook, "look identical" on an office monitor. What happened at the gamut boundary — and which chapter 2 demo was the preview of this bug?`}
+  >
+    Both colors live in P3 but outside sRGB, so on the office monitor the
+    browser clipped each to the sRGB boundary — and two distinct out-of-gamut
+    colors can clip to the same, or nearly the same, displayable point. Distinct
+    on the P3 screen, collapsed on the sRGB one. The preview was chapter 2's
+    seam between `rgb(255 0 0)` and `color(display-p3 1 0 0)`: two reds that
+    split on a wide-gamut screen and merge on an sRGB one. The seam was the
+    gamut edge all along.
+  </Question>
+</Questions>
 
 ## Further reading
 

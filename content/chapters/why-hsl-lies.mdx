@@ -5,6 +5,7 @@ part: 1
 question: hsl() holds L at 50%. Does the lightness hold?
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { EqualLightnessPalette } from '@/components/playgrounds/equal-lightness-palette'
 import { ConstantLHueSweep } from '@/components/playgrounds/constant-l-hue-sweep'
 import { WhatHslLComputes } from '@/components/playgrounds/what-hsl-l-computes'
@@ -91,11 +92,40 @@ Here's the Part 2 decision this chapter settles: **the engine never generates or
 
 HSL stays acceptable as an _input_ notation a user might type; the moment math runs on the channels, it has to run in a space whose channels mean what they say. Which space earns that job is chapter 5; how to move between colors safely is chapter 7.
 
-## Check yourself
+## Before you move on
 
-1. `hsl(60 100% 50%)` and `hsl(240 100% 50%)` share an L of 50%. Walk the actual formula: what did it compute for each color, and what two things did it ignore that let one emit thirteen times the other's light?
-2. A teammate generates a chart palette with `hsl(i * 36, 85%, 60%)` "so every series has equal visual weight." What would a grayscale screenshot of that chart reveal — and why did the tool's gray-ramp and single-hue tests pass?
-3. `hsl(320 100% 95%)` claims full saturation and looks like a pale pastel. What does HSL's S actually measure?
+<Questions>
+  <Question q="`hsl(60 100% 50%)` and `hsl(240 100% 50%)` share an L of 50%. Walk the actual formula: what did it compute for each color, and what two things did it ignore that let one emit thirteen times the other's light?">
+    The formula is `L = (max(R, G, B) + min(R, G, B)) / 2`. Yellow is `rgb(255,
+    255, 0)` and blue is `rgb(0, 0, 255)`; both have a max channel of 1 and a
+    min of 0, so both average to `0.5` — the same L. It ignored two things.
+    First, it ran on gamma-encoded values, positions on chapter 3's value
+    ladder, and labeled the result "lightness," a perception word. Second, it's
+    blind to _which_ channels are lit: `max` doesn't care that yellow has red
+    and green burning (21% + 72% = 93% of white's light) while blue has only its
+    7% channel. That's where the factor of thirteen comes from.
+  </Question>
+  <Question
+    q={`A teammate generates a chart palette with \`hsl(i * 36, 85%, 60%)\` "so every series has equal visual weight." What would a grayscale screenshot of that chart reveal — and why did the tool's gray-ramp and single-hue tests pass?`}
+  >
+    Desaturated, the swatches would spread across a wide range of grays instead
+    of landing at one lightness — the yellows and greens near-white, the blues
+    and purples dark — so "equal visual weight" is exactly what the palette
+    doesn't have. The earlier tests passed because HSL's lie is locally true. On
+    grays S is 0 and L is just the channel value, which chapter 3 showed is a
+    rough perceptual scale; within a single hue, raising L does lighten. The lie
+    only detonates when a formula crosses hues, which is precisely what a
+    rotating chart palette does.
+  </Question>
+  <Question q="`hsl(320 100% 95%)` claims full saturation and looks like a pale pastel. What does HSL's S actually measure?">
+    S measures distance from the gray axis _relative to the most the cube can
+    hold at that lightness_ — a ratio of available geometry, not absolute
+    vividness. Near white the RGB cube narrows toward a point, so there's barely
+    any room to hold, and "100% saturated" there can describe a color one step
+    from gray. Full S means "as colorful as this slice of the cube allows,"
+    which at L 95% is not very colorful at all.
+  </Question>
+</Questions>
 
 ## Further reading
 

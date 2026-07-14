@@ -5,6 +5,7 @@ part: 2
 question: 'Which of the three palette contracts does your chart need — and does your palette keep it under other eyes?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { ChartTokensToday } from '@/components/playgrounds/chart-tokens-today'
 import { UiRampAsCategorical } from '@/components/playgrounds/ui-ramp-as-categorical'
 import { CategoricalCeiling } from '@/components/playgrounds/categorical-ceiling'
@@ -87,11 +88,42 @@ The rewrite decision: **the engine generates visualization palettes as first-cla
 
 Left open, on purpose: shipping these palettes as CSS custom properties next to the rest of the theme — and what P3 buys a chart — is chapter 20.
 
-## Check yourself
+## Before you move on
 
-1. A teammate colors a six-series line chart with steps 4–9 of the accent ramp. Name both clauses of the categorical contract it breaks, and what the false message of the shared hue is.
-2. What is the one non-negotiable property of a sequential palette, how exactly does jet violate it (shape of the curve, not just "it's rainbow"), and what does viridis do with hue and chroma while keeping it?
-3. Your diverging heatmap ships with a `#f7f7f7` midpoint on a dark dashboard. What does the zero region do visually, what happens to the extremes, and which value from the dark theme should the midpoint be pinned to instead?
+<Questions>
+  <Question q="A teammate colors a six-series line chart with steps 4–9 of the accent ramp. Name both clauses of the categorical contract it breaks, and what the false message of the shared hue is.">
+    The categorical contract has two clauses, and a single-hue ramp breaks both.
+    First, every pair must be distinguishable at a glance — but adjacent ramp
+    steps are near-neighbors by design (blue 5 to blue 6 is ΔEok 0.045, about
+    two just-noticeable differences), hopeless where one line crosses another.
+    Second, no color may be louder than the others — a ramp climbs in lightness,
+    so the darker steps carry more visual weight than the lighter ones. The
+    false message: because readers associate dark colors with "more/high" and
+    bright with "less/low," the shared hue smuggles in a ranking of categories
+    that has no basis in the data.
+  </Question>
+  <Question
+    q={`What is the one non-negotiable property of a sequential palette, how exactly does jet violate it (shape of the curve, not just "it's rainbow"), and what does viridis do with hue and chroma while keeping it?`}
+  >
+    The one non-negotiable is that `L` must be monotonic across the range — the
+    lightness axis carries the "more," so it can only ever climb. Jet's OKLab
+    lightness starts at 0.27, climbs to a plateau around 0.90, crests at 0.97 on
+    yellow, then falls to 0.38 — three direction changes, so the top third of
+    the range runs downhill and two different data values print the same gray.
+    Viridis keeps `L` a straight linear climb (0.285 to 0.918) and spends all
+    its personality on the other axes: hue travels 216° and chroma wanders
+    between 0.08 and 0.19, none of it touching L's pacing.
+  </Question>
+  <Question q="Your diverging heatmap ships with a `#f7f7f7` midpoint on a dark dashboard. What does the zero region do visually, what happens to the extremes, and which value from the dark theme should the midpoint be pinned to instead?">
+    A `#f7f7f7` midpoint measures 17.6:1 against a dark background, so the cells
+    that mean "nothing happened" become the brightest objects on screen —
+    loudness in exactly the wrong place. Meanwhile the extremes, where the data
+    actually is, land around 1.4:1 against the dark surface and nearly vanish.
+    The fix is to pin the midpoint to the dark theme's own surface neutral —
+    chapter 15's tinted near-black — so the quiet zero stays quiet and the
+    loudness returns to the arms.
+  </Question>
+</Questions>
 
 ## Further reading
 

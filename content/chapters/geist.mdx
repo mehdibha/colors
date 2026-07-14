@@ -5,6 +5,7 @@ part: 3
 question: 'Ten steps whose numbers are jobs — what did Geist hand-pick, and how does the same card read under all five greats?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { GeistLadderWobble } from '@/components/playgrounds/geist-ladder-wobble'
 import { GeistStatusFold } from '@/components/playgrounds/geist-status-fold'
 import { GeistAlphaComposite } from '@/components/playgrounds/geist-alpha-composite'
@@ -108,11 +109,42 @@ This site had a stated purpose: learn color deeply enough to rewrite dotUI's col
 
 So the last exercise isn't a playground. Open a blank document, write eleven headings from the matrix, and under each one state the decision, the parameters it exposes, and the check that enforces it in CI. Where a row won't write, that chapter's question is the one to go back and answer. When it writes end to end — that's the spec, and the course did what it was for.
 
-## Check yourself
+## Before you move on
 
-1. Geist's gray ladder isn't monotonic — name one wobble and explain why it's evidence of health rather than a bug. What are the step numbers actually encoding?
-2. The error button ships on red-800 instead of red's designated high-contrast step. What measurement forces the detour, and what is the only contrast promise Geist puts in writing for the whole system?
-3. Geist and Radix both hand-tune every value. Name the scope decision that makes this survivable for Vercel, the three Geist moves worth stealing anyway, and the property of dotUI's product that rules out the strategy wholesale.
+<Questions>
+  <Question q="Geist's gray ladder isn't monotonic — name one wobble and explain why it's evidence of health rather than a bug. What are the step numbers actually encoding?">
+    Gray-400, the default border, is lighter than gray-300, the active
+    background one step below it — a ramp generator would never emit that. The
+    numbers don't encode lightness; they encode _jobs_. `100`–`300` are the
+    three background steps, `400`–`600` the three border steps, `700`–`800` the
+    solid pair, `900`–`1000` the text pair. Within the seams between those role
+    groups each color goes wherever its job needs it, so the non-monotonicity is
+    the fingerprint of values placed one at a time by hand against real
+    components, not a mistake.
+  </Question>
+  <Question q="The error button ships on red-800 instead of red's designated high-contrast step. What measurement forces the detour, and what is the only contrast promise Geist puts in writing for the whole system?">
+    White on red-700 — red's designated high-contrast background — measures
+    4.05:1, under the WCAG AA body floor of 4.5:1. So the component spec routes
+    the error button onto red-800, the _hover_ step, where white clears at
+    4.65:1. The only written contrast promise for the whole system is a single
+    line in the machine export: "Hold WCAG AA contrast (4.5:1 for body text)."
+    One meter, one number, no per-step or per-hue guarantee — the rest of the
+    contract lives in the culture, not the file.
+  </Question>
+  <Question q="Geist and Radix both hand-tune every value. Name the scope decision that makes this survivable for Vercel, the three Geist moves worth stealing anyway, and the property of dotUI's product that rules out the strategy wholesale.">
+    The scope decision: Geist is built for exactly one product family and one
+    company's taste, with designers in the loop for every new surface — nobody
+    themes vercel.com but Vercel, so hand-placing ~320 values is affordable.
+    Three moves worth stealing: jobs-in-the-name as the documentation surface,
+    backgrounds as their own two-token scale (separate from the gray ramp), and
+    the scope posture for defaults — ship Geist-sized by default, breadth on
+    demand. What rules out copying it wholesale is dotUI's input: anyone's
+    arbitrary brand color, with no designers on the consumer end. Contract-by-
+    culture only works when the palette's authors review every consuming
+    component; a stranger with a hex code needs the machinery Geist deliberately
+    skipped.
+  </Question>
+</Questions>
 
 ## Further reading
 

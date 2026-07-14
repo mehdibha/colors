@@ -5,6 +5,7 @@ part: 1
 question: Do your colors still mean different things to eyes unlike yours?
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { ConfusionLineWheel } from '@/components/playgrounds/confusion-line-wheel'
 import { CvdSimulator } from '@/components/playgrounds/cvd-simulator'
 import { ProtanDarkensRed } from '@/components/playgrounds/protan-darkens-red'
@@ -114,11 +115,46 @@ Three Part 2 chapters inherit this one directly.
 
 **Chapter 19 — CVD-safe is a hard requirement for data-viz palettes.** A categorical chart palette is a set of colors whose _entire job_ is to be told apart, with no icons or labels to fall back on. You watched the hue-only palette collapse; chapter 19 treats simulate-and-measure — all three filters, minimum ΔEok — as a pass/fail gate on any palette the engine emits.
 
-## Check yourself
+## Before you move on
 
-1. A teammate ships a status system where "healthy" is green and "down" is red, same lightness, no icons. Roughly what fraction of male users is likely to struggle, which two deficiency types are responsible, and what's the smallest change that fixes it?
-2. "CVD doesn't affect brightness, so if my colors differ in lightness I'm safe." Where exactly is that sentence wrong, and what does it mean for how much you can lean on OKLCH L alone?
-3. A user has Windows High Contrast on. Your card uses a background gradient, a drop shadow, and a colored left border to signal "premium." What does the browser do to each of those three — and for the one still drawing anything, what exactly survives: its geometry, its color, or both?
+<Questions>
+  <Question
+    q={`A teammate ships a status system where "healthy" is green and "down" is red, same lightness, no icons. Roughly what fraction of male users is likely to struggle, which two deficiency types are responsible, and what's the smallest change that fixes it?`}
+  >
+    Roughly 1 in 12 men — about 8% — of Northern European descent, since the two
+    responsible types both live on the red-green axis: `protan` (long-wavelength
+    cone) and `deutan` (medium-wavelength cone), with deuteranomaly alone
+    accounting for most of that 8%. At the same lightness with no icons, the red
+    and green collapse to one olive. The smallest fix is to add one redundant
+    channel — a lightness gap, an icon, or a text label — so the meaning no
+    longer rests on hue alone.
+  </Question>
+  <Question
+    q={`"CVD doesn't affect brightness, so if my colors differ in lightness I'm safe." Where exactly is that sentence wrong, and what does it mean for how much you can lean on OKLCH L alone?`}
+  >
+    It's wrong at the red end under protan. Deutan vision keeps luminance
+    roughly intact, so lightness differences survive almost unchanged — but
+    protanopes are missing the long-wavelength cones, and red is
+    long-wavelength, so for them reds lose luminance and darken. A red you tuned
+    to a comfortable contrast ratio can slip below it for a protanope, because
+    the red they see is darker than the one you measured. So a lightness
+    difference is far more robust than a hue difference, but not perfectly
+    invariant — verify reds against the protan simulator specifically rather
+    than trusting the OKLCH `L` you designed to be the one they get.
+  </Question>
+  <Question
+    q={`A user has Windows High Contrast on. Your card uses a background gradient, a drop shadow, and a colored left border to signal "premium." What does the browser do to each of those three — and for the one still drawing anything, what exactly survives: its geometry, its color, or both?`}
+  >
+    Under `forced-colors: active` the browser throws your palette away. The
+    background gradient is dropped (non-URL background images are removed, and
+    `background-color` is treated as if unset); the drop shadow is forced to
+    `none`. The left border is the one still drawing an edge — but only its
+    geometry survives: `border-color` is treated as if you never set it and gets
+    repainted from a user-chosen `SystemColor`. So the "premium" signal, if it
+    ever lived in the color, is gone; only the border's presence remains, in the
+    user's color, not yours.
+  </Question>
+</Questions>
 
 ## Further reading
 

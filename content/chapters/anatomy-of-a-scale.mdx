@@ -5,6 +5,7 @@ part: 2
 question: What breaks when a part of this card takes the wrong step?
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { TwelveJobsLegend } from '@/components/playgrounds/twelve-jobs-legend'
 import { StepsAreStates } from '@/components/playgrounds/steps-are-states'
 import { SolidStepText } from '@/components/playgrounds/solid-step-text'
@@ -108,11 +109,45 @@ This chapter _is_ a Part 2 decision — the foundation one: **the engine's outpu
 
 Get the contract right and the rest of Part 2 is engineering. Skip it, and no curve, however perceptually uniform, can save you — you'll have generated ten pretty shades.
 
-## Check yourself
+## Before you move on
 
-1. A teammate moves a card from step 2 to step 5 "because it looked better," and the step-11 body text on it now fails 4.5:1. They argue the text is fine — "it passed contrast." What exactly did the text's guarantee promise, and what are the two legitimate fixes?
-2. Steps 3–4–5 and steps 6–7–8 encode the same kind of relationship. What is it, and why does regenerating step 3 alone — even to a perfectly nice color — break something no contrast meter will catch?
-3. Your engine's design review proposes 8 steps instead of 12, "it's leaner." What question do you have to answer before you can agree, and what are two concrete things that stop existing when you merge slots?
+<Questions>
+  <Question
+    q={`A teammate moves a card from step 2 to step 5 "because it looked better," and the step-11 body text on it now fails 4.5:1. They argue the text is fine — "it passed contrast." What exactly did the text's guarantee promise, and what are the two legitimate fixes?`}
+  >
+    The guarantee had three parts — the foreground, the meter, and a _named_ set
+    of backgrounds. Radix promises step 11 clears its contrast bar on top of
+    step 2 from the same scale; it never promised anything on step 5. So "it
+    passed contrast" is empty until you name the background, and moving the card
+    to step 5 moved the floor out from under the promise. The two legitimate
+    fixes: put the card back on a background the guarantee names (steps 1–2), or
+    treat step 5 as a new contrast problem and pick a foreground that actually
+    clears the bar there — the high-contrast step 12. What you can't do is keep
+    step 11 on step 5 and call it covered.
+  </Question>
+  <Question q="Steps 3–4–5 and steps 6–7–8 encode the same kind of relationship. What is it, and why does regenerating step 3 alone — even to a perfectly nice color — break something no contrast meter will catch?">
+    Each triad is one element across its states: 3–4–5 is a UI element
+    background at rest, hovered, and pressed; 6–7–8 is a border at rest,
+    interactive, and emphasized. The steps aren't independent — a hover has to
+    read as the same surface leaning toward you, a small perceptual step from
+    rest. Regenerate step 3 on its own and you desync that progression: the rest
+    state no longer sits the right distance from its hover and active twins.
+    That contract is qualitative — "same surface, one step warmer" — not a
+    ratio, so no contrast meter fires when it breaks.
+  </Question>
+  <Question
+    q={`Your engine's design review proposes 8 steps instead of 12, "it's leaner." What question do you have to answer before you can agree, and what are two concrete things that stop existing when you merge slots?`}
+  >
+    The question is the output contract: which jobs must exist? Fewer steps only
+    means fewer jobs, so before agreeing you have to decide which
+    responsibilities you're dropping — does the system still distinguish app and
+    subtle backgrounds, does the solid keep a hover twin, is there one text step
+    or two? Merge steps 9 and 10 and the solid loses its hover state; merge 11
+    and 12 and you lose the line between low-contrast "de-emphasized" text and
+    high-contrast "headline" text. Leaner isn't free — every merged slot is a
+    job the system can no longer name.
+  </Question>
+</Questions>
 
 ## Further reading
 

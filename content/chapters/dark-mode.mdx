@@ -5,6 +5,7 @@ part: 2
 question: 'What breaks when dark mode is just the light ramp flipped upside down?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { GlowAndTheFix } from '@/components/playgrounds/glow-and-the-fix'
 import { PolarityTwins } from '@/components/playgrounds/polarity-twins'
 import { PureBlackThreeWays } from '@/components/playgrounds/pure-black-three-ways'
@@ -93,11 +94,46 @@ The rewrite decision, stated plainly: **dark mode is a second generation pass wi
 
 Left open, on purpose: naming the light/dark pairs so components consume one token (`bg`, `bg-elevated`) is chapter 17; alpha-based overlays and the full status-state matrix are chapter 18; the Radix and Material deep dives are chapters 21 and 23.
 
-## Check yourself
+## Before you move on
 
-1. A teammate proposes dark mode as `L → 1 − L` on every token, "since OKLCH is perceptually uniform." Name three distinct failures — one at the surface steps, one on the accent, one about elevation — and the perception fact behind each.
-2. Radix ships the same step 9 hex in light and dark for blue, but different step 11s. Why does the solid survive the room change while the text color can't?
-3. In light mode, yellow's text step is a brown; in dark mode it's a vivid yellow with more chroma than the light version. What constraint flipped, and why should this kill any "desaturate everything for dark" rule in your engine?
+<Questions>
+  <Question
+    q={`A teammate proposes dark mode as \`L → 1 − L\` on every token, "since OKLCH is perceptually uniform." Name three distinct failures — one at the surface steps, one on the accent, one about elevation — and the perception fact behind each.`}
+  >
+    Surfaces: the light ramp's whisper-spaced quiet end, mirrored into the
+    shadows, collapses — three surface steps land at L 0.009, 0.017, 0.044 and
+    all render as `#000000`, because near black equal `ΔL` steps stop being
+    honest currency and screen flare swamps small dark differences (chapters 3
+    and 5). Accent: a saturated color keeps light's chroma and vibrates against
+    the dark field — simultaneous contrast credits it with extra brightness and
+    colorfulness, so it wants lift and less chroma, not a mirror. Elevation: the
+    flip has no answer at all — light mode raises surfaces with a darkening
+    shadow, but a dark floor has no darker left to give, so elevation must
+    invert to a lightening cue, which is new information no light ramp encodes.
+  </Question>
+  <Question q="Radix ships the same step 9 hex in light and dark for blue, but different step 11s. Why does the solid survive the room change while the text color can't?">
+    Step 9 is a solid button that sits at mid lightness carrying its own
+    background, so it's mostly judged against itself, not the surface — the room
+    change barely touches it. Step 11 is a text-grade accent read directly
+    against the surface, so simultaneous contrast makes it glow on a dark field.
+    The fix is per-job: the text step lifts lightness and sheds chroma (blue 11
+    goes from oklch(0.556 0.162) to oklch(0.764 0.126)) while the solid keeps
+    its hex. That per-job split is the first proof no single transform can do
+    dark mode.
+  </Question>
+  <Question
+    q={`In light mode, yellow's text step is a brown; in dark mode it's a vivid yellow with more chroma than the light version. What constraint flipped, and why should this kill any "desaturate everything for dark" rule in your engine?`}
+  >
+    The constraint is the gamut tent: there's no dark vivid yellow, so a
+    light-mode yellow _text_ color has to be dark and ends up a brown
+    (`#9e6c00`, hue bent toward brown). The dark room needs a _light_ text
+    color, and light vivid yellow exists in abundance — so `yellowDark11` gains
+    chroma (0.119 → 0.166) and re-aims its hue back onto the yellow ridge. Dark
+    mode is a per-hue, per-job re-negotiation with the tent, not a uniform
+    desaturation — a rule that "reduces C by 20% for dark" would un-fix yellow
+    while fixing red.
+  </Question>
+</Questions>
 
 ## Further reading
 

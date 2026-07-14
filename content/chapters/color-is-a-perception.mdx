@@ -5,6 +5,7 @@ part: 1
 question: Is the same color the same color?
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { SameAccentTwoSurfaces } from '@/components/playgrounds/same-accent-two-surfaces'
 import { SimultaneousContrast } from '@/components/playgrounds/simultaneous-contrast'
 
@@ -35,13 +36,33 @@ Every color in your system will be judged by users' eyes in context, never in is
 
 There's a deeper version of this lesson coming: it's not just surroundings that bend perception, but the raw math of light itself — doubling the light does not double the brightness. That non-linearity is chapter 3, and it's the reason half the "obvious" color math in your codebase is wrong.
 
-## Check yourself
+## Before you move on
 
-Before moving on, you should be able to answer these without scrolling up:
-
-1. Two elements use the same token but sit on different surfaces. A designer files a bug: "these don't match." What's actually going on, and is it a bug?
-2. Why does a palette previewed only on white mislead you about dark mode?
-3. In one sentence: what does a hex value actually specify, and what doesn't it specify?
+<Questions>
+  <Question
+    q={`Two elements use the same token but sit on different surfaces. A designer files a bug: "these don't match." What's actually going on, and is it a bug?`}
+  >
+    The values are identical — nothing in the code is wrong. Your eyes grade on
+    a curve, comparing each patch against its surround, so the same physical
+    color genuinely looks different on a light surface than on a dark one.
+    That's simultaneous contrast, not a value bug. Whether it's worth "fixing"
+    is a design call: if the mismatch reads wrong, the answer is a different
+    token tuned per surface, never editing one shared value and expecting it to
+    look the same everywhere.
+  </Question>
+  <Question q="Why does a palette previewed only on white mislead you about dark mode?">
+    White is just one context. The same accent that hums quietly on a white
+    artboard can glow radioactive on near-black — same number, different
+    perception. Previewing on white tells you nothing about how those values
+    will land on a dark surface, which is why dark mode is a second design
+    problem, not a value swap.
+  </Question>
+  <Question q="In one sentence: what does a hex value actually specify, and what doesn't it specify?">
+    A hex value specifies how much red, green, and blue light a screen should
+    emit; it does not specify the color you perceive, which your brain computes
+    live from that light and everything around it.
+  </Question>
+</Questions>
 
 ## Further reading
 

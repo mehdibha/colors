@@ -5,6 +5,7 @@ part: 2
 question: 'Your dark yellow reads olive — how many degrees toward orange buy the yellow back?'
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { BlueHoldsItsHue } from '@/components/playgrounds/blue-holds-its-hue'
 import { DarkYellowGoesOlive } from '@/components/playgrounds/dark-yellow-goes-olive'
 import { SameTurnDifferentName } from '@/components/playgrounds/same-turn-different-name'
@@ -77,11 +78,44 @@ The rewrite this chapter specs: a per-family table of bend defaults, seeded from
 
 With that, all three curves are drawn — a ramp is now a skeleton, a chroma arc under a tent, and a bend. What's still open: dropping an arbitrary brand seed onto those three curves is chapter 14's fight; the near-free hue of the lightest steps returns as tinted neutrals in chapter 15; and whether any of these bends survive the trip to a dark background is chapter 16's problem.
 
-## Check yourself
+## Before you move on
 
-1. A constant-hue OKLCH yellow ramp has perfect steering by chapter 5's standards, yet its dark steps read olive. What exactly went wrong — and why does bending the darks toward orange fix it while bending toward green makes it worse?
-2. Turning a blue solid and a yellow solid by the same 20° produces the same ΔEOK. What does that number measure, what doesn't it measure, and why does that force hue policy to be set per hue family instead of one global number?
-3. Name the two independent reasons dark yellows bend toward orange — one about naming, one about the gamut tent — and explain which direction a dark blue drifts and what it buys there.
+<Questions>
+  <Question q="A constant-hue OKLCH yellow ramp has perfect steering by chapter 5's standards, yet its dark steps read olive. What exactly went wrong — and why does bending the darks toward orange fix it while bending toward green makes it worse?">
+    Nothing went wrong with the space. OKLCH held the hue angle flat exactly as
+    designed — the steering is flawless. The problem is a _name_ boundary, not a
+    steering error. Yellow's identity lives at the top of the lightness range —
+    its gamut cusp sits at L 0.968, nearly white — so walking hue 110° down in
+    lightness doesn't give you a darker yellow, it carries you into the category
+    next door: olive, khaki, brown-green. Bending the darks toward orange (110°
+    → 80°) rescues them because our names for dark warm yellows — gold, amber,
+    bronze — sit toward orange on the wheel. Bending toward green pushes deeper
+    into the olive/avocado territory you were trying to escape.
+  </Question>
+  <Question q="Turning a blue solid and a yellow solid by the same 20° produces the same ΔEOK. What does that number measure, what doesn't it measure, and why does that force hue policy to be set per hue family instead of one global number?">
+    ΔEOK measures perceptual _difference_ — the size of the step — and OKLCH
+    keeps that uniform, so 20° costs the same at both hues. What it doesn't
+    measure is _identity_: whether the color still gets the same name. "Blue" is
+    a wide territory you can wander ±20° inside and stay blue; yellow is a
+    sliver with green pressing on one side and orange on the other. Naming is a
+    fact about people and language, outside any space's promises, so uniformity
+    says nothing about where a name boundary falls. Because the tolerance a hue
+    policy manages is that name-boundary width, and it differs per family, the
+    policy can't be one global number.
+  </Question>
+  <Question q="Name the two independent reasons dark yellows bend toward orange — one about naming, one about the gamut tent — and explain which direction a dark blue drifts and what it buys there.">
+    First, naming: dark warm yellows are named toward orange — gold, amber,
+    bronze — so a warm-ward bend keeps the darks inside the yellow family.
+    Second, the tent: the gamut ceiling is taller toward orange at low
+    lightness, so the shipped yellow-950 hue near 54° affords more chroma than
+    86° or 102° would. At yellow both reasons point the same way, which is why
+    every system agrees on the direction. Dark blue drifts the other way —
+    toward violet (Tailwind's blue-950 lands at 268°, up from the ~255° its
+    light steps hold) — and there the payoff is chroma: hue 268 affords about C
+    0.188 where a flat 255° ramp would afford only 0.093, roughly doubling the
+    dark steps' chroma budget.
+  </Question>
+</Questions>
 
 ## Further reading
 

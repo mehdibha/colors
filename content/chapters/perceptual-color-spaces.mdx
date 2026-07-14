@@ -5,6 +5,7 @@ part: 1
 question: Three ramps, equal numeric steps each — which one does your eye believe?
 ---
 
+import { Questions, Question } from '@/components/questions'
 import { EqualDistanceUnequalDifference } from '@/components/playgrounds/equal-distance-unequal-difference'
 import { LabBluePurpleDrift } from '@/components/playgrounds/lab-blue-purple-drift'
 import { UniformityLineup } from '@/components/playgrounds/uniformity-lineup'
@@ -84,11 +85,42 @@ The payoff lands in Part 2's core chapters: a color ramp will be _designed as th
 
 Two doors this deliberately leaves closed: OKLCH will happily name colors your screen can't show — you felt the C slider's ceiling move; that edge is chapter 6 — and knowing where colors _live_ doesn't yet say how to travel between them, which is chapter 7's subject.
 
-## Check yourself
+## Before you move on
 
-1. "Perceptually uniform" in one sentence — and how did this chapter's opening demo show sRGB failing it with two pairs of identical numeric distance?
-2. In the blue lineup, CIELAB's steps were perfectly even and it still lost. Which of the two promises did it break, and what did OKLab's construction do differently to keep it?
-3. A teammate ports `hsl(240 100% 50%)` to `oklch(0.55 0.12 240)` and asks why their blue looks wrong. Another insists two maximum-chroma accents "must look equally bright" because both have L 0.65. What do you tell each of them?
+<Questions>
+  <Question
+    q={`"Perceptually uniform" in one sentence — and how did this chapter's opening demo show sRGB failing it with two pairs of identical numeric distance?`}
+  >
+    Equal numeric distance means equal perceived difference — anywhere in the
+    space, in any direction. The opening demo put up two pairs that were both
+    exactly 70 apart in sRGB coordinates, yet your eye scored one gap as "same
+    color" and the other as "different colors." ΔE2000, the industry's
+    perceived-difference formula, backed the eye up: the second gap read about
+    ten times the first. Identical numbers, wildly different perceived change —
+    that's sRGB flunking uniformity.
+  </Question>
+  <Question q="In the blue lineup, CIELAB's steps were perfectly even and it still lost. Which of the two promises did it break, and what did OKLab's construction do differently to keep it?">
+    Uniformity is two promises: pacing (are the steps evenly sized?) and
+    steering (does the walk stay on the same hue?). On blue, CIELAB kept pacing
+    metronome-perfect but broke steering — perfectly even steps marching
+    confidently into purple. OKLab keeps both because it was the only one of the
+    three fitted to hue data: Ottosson optimized it against measured
+    constant-hue judgments, so its blues don't drift as you move along them.
+  </Question>
+  <Question
+    q={`A teammate ports \`hsl(240 100% 50%)\` to \`oklch(0.55 0.12 240)\` and asks why their blue looks wrong. Another insists two maximum-chroma accents "must look equally bright" because both have L 0.65. What do you tell each of them?`}
+  >
+    Tell the first that carrying the hue number `240` straight across is the
+    bug: OKLCH's hue wheel is not HSL's wheel rotated by a constant — the two
+    are offset _and_ unevenly stretched, so the same angle names a different
+    hue. Pick the OKLCH hue by eye or by conversion, not by copying the digits.
+    Tell the second that equal L does not guarantee equal apparent brightness on
+    vivid colors: the Helmholtz–Kohlrausch effect makes very saturated colors
+    look brighter than a gray of the same measured luminance, and OKLab's L
+    largely doesn't model it — so L is least trustworthy exactly on
+    maximum-chroma accents.
+  </Question>
+</Questions>
 
 ## Further reading
 
